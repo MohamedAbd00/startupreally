@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# إذا عندك الملف هنا
+src/config/.env
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Vercel
+.vercel/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -66,7 +66,7 @@ export const upload = multer({
     fileSize: 5 * 1024 * 1024,
   },
   fileFilter(req, file, cb) {
-    if (imageValidationTypes.includes(file.mimetype)) {
+    if (projectValidationTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("❌ الملف غير مدعوم"), false);

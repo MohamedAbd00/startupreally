@@ -60,7 +60,11 @@ export const singupclint = asyncHandelr(async(req , res , next )=>{
 
      const code =generateCode(10)
         const hash = generatehash({planText:password})
- sendemail(email , code)
+await sendemail({
+    to: email,
+    subject: "Verify Your Email",
+    code: code,
+})
   const   users = await Usermodel.create({
         username: name ,
         email , 

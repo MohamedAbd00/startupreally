@@ -122,10 +122,12 @@ export const getMyChats = asyncHandelr(async (req, res, next) => {
 
   const data = await Promise.all(
     chats.map(async (chat) => {
-      const otherUser =
-        chat.client._id.toString() === userId.toString()
-          ? chat.developer
-          : chat.client;
+      const isClient =
+        chat.client?._id?.toString() === userId.toString();
+
+      const otherUser = isClient
+        ? chat.developer
+        : chat.client;
 
       const unreadCount = await Messages.countDocuments({
         chat: chat._id,
@@ -140,13 +142,21 @@ export const getMyChats = asyncHandelr(async (req, res, next) => {
 
         projectName: chat.project?.projectName,
 
-        user: {
-          _id: otherUser._id,
-          username: otherUser.username,
-          profileImage: otherUser.profileImage,
-          isOnline: otherUser.isOnline,
-          lastSeen: otherUser.lastSeen,
-        },
+        user: otherUser
+          ? {
+              _id: otherUser._id,
+              username: otherUser.username,
+              profileImage: otherUser.profileImage,
+              isOnline: otherUser.isOnline,
+              lastSeen: otherUser.lastSeen,
+            }
+          : {
+              _id: null,
+              username: "محذوف",
+              profileImage: null,
+              isOnline: false,
+              lastSeen: null,
+            },
 
         lastMessage: chat.lastMessage,
 

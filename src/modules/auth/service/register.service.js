@@ -3,8 +3,7 @@ import { successresponse } from "../../../utlis/response/success.response.js";
 import { comparehash, generatehash } from "../../../utlis/security/hash.security.js";
 import Usermodel from "../../../DB/models/usermodel.js";
 import {generateCode } from "../../../utlis/security/Token.security.js";
-import { sendemail } from "../../../utlis/email/sendemail.js";
-
+import {sendemail} from "../../../utlis/email/sendemail.js"
 //dev register
 
 export const singupdev = asyncHandelr(async(req , res , next )=>{
@@ -21,9 +20,13 @@ export const singupdev = asyncHandelr(async(req , res , next )=>{
 
      const code =generateCode(10)
         const hash = generatehash({planText:password})
-    sendemail(email , code)
+await sendemail({
+    to: email,
+    subject: "Verify Your Email",
+    code: code,
+})
 
-    const users = await Usermodel.create({
+   const users = await Usermodel.create({
         username: name ,
         email , 
         password : hash ,

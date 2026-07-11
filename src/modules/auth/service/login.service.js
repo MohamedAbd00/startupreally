@@ -3,7 +3,7 @@ import { successresponse } from "../../../utlis/response/success.response.js";
 import { comparehash, generatehash } from "../../../utlis/security/hash.security.js";
 import Usermodel from "../../../DB/models/usermodel.js";
 import {generateCode } from "../../../utlis/security/Token.security.js";
-import { sendemail } from "../../../utlis/email/sendemail.js";
+import { sendemail, sendpassword } from "../../../utlis/email/sendemail.js";
 import { devtoken, generatetoken, clienttoken } from "../../../utlis/security/Token.security.js";
 import { v2 as cloudinary } from 'cloudinary';
 import passport from "../service/google.service.js"; // المسار حسب مشروعك
@@ -288,8 +288,11 @@ export const changePasswordemail = asyncHandelr(async (req, res, next) => {
  const hash = generatehash({planText:code})
 
  await Usermodel.findOneAndUpdate({email}, {password :hash})
-await sendemail(email , code)
-
+await sendpassword({
+    to: email,
+    subject: "New Password",
+    code: code,
+})
 
   return res.status(200).json({
     message: "✅ تم تغيير كلمة السر بنجاح",

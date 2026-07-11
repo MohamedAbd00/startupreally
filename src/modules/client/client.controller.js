@@ -1,7 +1,7 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { acceptProposal, Addbatch, addfeatures, addObjective, clinetapprove, clinetdashboard, compliteprofileclient, createproject, deleteAccount, getalldev, getAllImages, getClientProjects, getdetilsproject, getdevprofile, getProjectProposals, getstore, rejectProposal, updateAccountSettings, updateNotificationSettings } from "./service/clinet.service.js";
+import { acceptProposal, Addbatch, addfeatures, addObjective, buyproject, clinetapprove, clinetdashboard, compliteprofileclient, createproject, deleteAccount, getalldev, getAllImages, getClientProjects, getdetilsproject, getdevprofile, gethomedetails, getmyprojectbuyed, getProjectProposals, getstore, rejectProposal, updateAccountSettings, updateNotificationSettings } from "./service/clinet.service.js";
 const router = Router()
 //اكمال الملف الشخصي
 router.put(
@@ -117,4 +117,23 @@ router.get(
    middlewere(),
   getdetilsproject
 );
+//شراء مشروع
+router.post(
+  "/buyproject",
+   middlewere(),
+  buyproject
+);
+//جلب المشاريع التي تم شرائها 
+router.get(
+  "/getmyprojectbuyed",
+   middlewere(),
+  getmyprojectbuyed
+);
+//جلب المشاريع التي تم شرائها 
+router.get(
+  "/gethomedetails",
+   
+  gethomedetails
+);
+
 export default router

@@ -1,4 +1,4 @@
-profileImage
+
 import { asyncHandelr } from "../../../utlis/response/error.response.js";
 import { successresponse } from "../../../utlis/response/success.response.js";
 import Usermodel from "../../../DB/models/usermodel.js";
@@ -11,6 +11,7 @@ import { createProjectActivity } from "../../../utlis/activity/projectActivity.j
 import storeModel from "../../../DB/models/store.js";
  import {createNotification} from "../../../utlis/activity/createNotification.js"
   import ProductViews from "../../../DB/models/ProductViews.js"
+import Order from "../../../DB/models/Order.js";
 
 
 //تسجيل الدخول
@@ -766,7 +767,7 @@ export const getClientSettings = asyncHandelr(async (req, res, next) => {
   );
 });
 //تعديل معلومات الحساب
-export const updateAccountSettings = asyncHandelr(async (req, res) => {
+export const updateAccountSettings = asyncHandelr(async (req, res, next) => {
 
   const updates = {};
 
@@ -804,7 +805,7 @@ export const updateAccountSettings = asyncHandelr(async (req, res) => {
   );
 });
 //تعديل اعدادات الاشعارات
-export const updateNotificationSettings = asyncHandelr(async (req, res) => {
+export const updateNotificationSettings = asyncHandelr(async (req, res, next) => {
 
   const updates = {};
 
@@ -830,7 +831,7 @@ export const updateNotificationSettings = asyncHandelr(async (req, res) => {
   );
 });
 //حذف الحساب
-export const deleteAccount = asyncHandelr(async (req, res) => {
+export const deleteAccount = asyncHandelr(async (req, res, next) => {
 
   await Usermodel.findByIdAndUpdate(
     req.user._id,
@@ -848,11 +849,11 @@ export const deleteAccount = asyncHandelr(async (req, res) => {
 });
 
 //جلب بيانات مشروع معين
-export const getdetilsproject = asyncHandelr(async (req, res) => {
+export const getdetilsproject = asyncHandelr(async (req, res, next) => {
 const {id} = req.params
  const project = await storeModel.findById(id).populate("owner" , "username profileImage");
 if(!project){
-        new Error("المشروع غير موجود", { cause: 404 })
+    return next    ( new Error("المشروع غير موجود", { cause: 404 }))
 
 }
 
@@ -876,6 +877,78 @@ const views = await ProductViews.countDocuments()
   project,
   views,
   countprojects
+}
+  );
+});
+
+//شراء مشروع
+export const buyproject = asyncHandelr(async (req, res, next) => {
+  const id = req.user._id
+const {projectid , phone , typewallet , name  , amount , type} = req.body
+ const project = await storeModel.findById(projectid);
+if(!project){
+   return next(      new Error("المشروع غير موجود", { cause: 404 }))
+
+}
+if(req.user.userType == "developer"){
+ return next(  new Error("يمكن فقط للعميل شراء  المشاريع", { cause: 404 }))
+}
+const buyed = await Order.findOne({project:projectid})
+if(buyed){
+   return next(      new Error("لقد اشتريت المشروع من قبل", { cause: 404 }))
+
+}
+const done = await Order.create({
+  buyer: id ,
+  developer : project.owner,
+  project :projectid,
+  typewallet,
+  phone,
+  name , 
+package : type,
+ amount
+})
+
+
+  return successresponse(
+    res,
+    "تم تفديم طلب الشراء بنجاح",
+    200,
+ {
+ done
+}
+  );
+});
+//جلب المشاريع الي اشترها العميل 
+export const getmyprojectbuyed = asyncHandelr(async (req, res, next) => {
+  const id = req.user._id
+
+ const project = await Order.find({buyer:id}).populate("developer", "username profileImage").populate("project", "projectName downloadurl");
+
+
+  return successresponse(
+    res,
+    "تم جلب المشاريع بنجاح",
+    200,
+ {
+ project
+}
+  );
+});
+
+//جلب المشاريع والمبرمجين في الداش بورد
+export const gethomedetails = asyncHandelr(async (req, res, next) => {
+
+ const project = await storeModel.find().populate("owner", "username profileImage").limit(4)
+const dev = await Usermodel.find({userType :"developer"}).limit(6)
+
+  return successresponse(
+    res,
+    "تم جلب البيانات بنجاح بنجاح",
+    200,
+ {
+ project ,
+ dev
 }
   );
 });

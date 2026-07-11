@@ -27,7 +27,7 @@ delivered: {
 
     package: {
       type: String,
-      enum: ["basic", "pro", "enterprise"],
+      enum: ["Basic", "Pro", "Enterprise"],
       required: true,
     },
 
@@ -42,10 +42,24 @@ delivered: {
       default: "pending",
     },
 
-    paymentId: {
-      type: Schema.Types.ObjectId,
-      ref: "Payment",
+   phone :{
+     type: String,
+     required: true,
+
+   },
+     typewallet: {
+      type: String,
+      enum: ["vodafone_cash", "etisalat_cash", "instapay","orange_cash"],
+      
+            required: true,
+
     },
+    name :{
+     type: String,
+     required: true,
+
+    }
+
   },
   {
     timestamps: true,

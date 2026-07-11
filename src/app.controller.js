@@ -15,7 +15,11 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use(cors({
 
-  origin: "https://progzila.com",
+    origin: [
+    "https://progzila.com",
+    "https://www.progzila.com",
+    "http://localhost:5173"
+  ],
   credentials: true
 }));
 connectDB();

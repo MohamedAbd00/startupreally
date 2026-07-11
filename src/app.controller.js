@@ -14,7 +14,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use(cors({
-  origin: "https://www.progzila.com",
+  origin: "https://startupreally-production.up.railway.app",
 
    
   credentials: true

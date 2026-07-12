@@ -188,21 +188,27 @@ console.log({
       ? "upload_large"
       : "upload",
 });
-  uploadMethod.call(
-    cloudinary.uploader,
-    file.path,
-    {
-      ...options,
-      chunk_size: 10 * 1024 * 1024,
-    },
-    (error, result) => {
-      if (error) return reject(error);
+ uploadMethod.call(
+  cloudinary.uploader,
+  file.path,
+  {
+    ...options,
+    chunk_size: 10 * 1024 * 1024,
+  },
+  (error, result) => {
 
-      fs.unlink(file.path, () => {});
-      resolve(result);
+    if (error) {
+      console.log("========== CLOUDINARY ERROR ==========");
+      console.dir(error, { depth: null });
+      console.log(JSON.stringify(error, null, 2));
+      console.log("======================================");
+      return reject(error);
     }
-  );
 
+    fs.unlink(file.path, () => {});
+    resolve(result);
+  }
+);
   return;
 }
     // لو الملف جاي من memoryStorage

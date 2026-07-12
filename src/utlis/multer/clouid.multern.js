@@ -73,7 +73,7 @@ const projectValidationTypes = [
 export const uploadStoreProject = multer({
   storage: diskStorage,
   limits: {
-    fileSize: 250 * 1024 * 1024, // 250MB
+    fileSize: 500 * 1024 * 1024, // 250MB
   },
   fileFilter(req, file, cb) {
     if (projectValidationTypes.includes(file.mimetype)) {
@@ -193,7 +193,7 @@ console.log({
     file.path,
     {
       ...options,
-      chunk_size: 20 * 1024 * 1024,
+      chunk_size: 10 * 1024 * 1024,
     },
     (error, result) => {
       if (error) return reject(error);

@@ -12,7 +12,13 @@ import storeModel from "../../../DB/models/store.js";
  import {createNotification} from "../../../utlis/activity/createNotification.js"
   import ProductViews from "../../../DB/models/ProductViews.js"
 import Order from "../../../DB/models/Order.js";
-
+import previousprojects from "../../../DB/models/previousprojects.js"
+import Review from "../../../DB/models/Review.js"; // ✅ أضف الـ import ده
+import chatsupport from "../../../DB/models/chatsupport.js";
+import projectreviwe from "../../../DB/models/projectreviwe.js";
+import reportModel from "../../../DB/models/report.js";
+import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
+import { sendemail } from "../../../utlis/email/sendemail.js";
 
 //تسجيل الدخول
 
@@ -57,11 +63,12 @@ export const getAllImages = asyncHandelr(async (req, res, next) => {
 });
 //انشاء مشروع
 export const createproject = asyncHandelr(async (req, res, next) => {
-  const{name , desctption , type , skills ,time ,budget, deadline} = req.body;
+  const{name , desctption , type , skills ,time ,budget, deadline , currency} = req.body;
  const owner = req.user?._id;
 
  const ptoject = await projects.create({
   owner,
+  currency,
 category: type,
 projectName: name,
 Description: desctption,
@@ -71,7 +78,153 @@ budget,
 deadline
 
  })
+setImmediate(async () => {
+  try {
+    const developers = await Usermodel.find({
+      userType: "developer",
+    }).select("email username");
 
+    const results = await Promise.all(
+      developers.map((developer) =>
+        sendemail({
+          to: developer.email,
+          subject: "🚀 مشروع جديد على Progzila",
+          html: `
+           <div style="
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 30px;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  background: #f9fafb;
+  border-radius: 24px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+">
+  
+  <!-- Header -->
+  <div style="
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  ">
+    <span style="
+      font-size: 28px;
+      background: #eef2ff;
+      padding: 6px 12px;
+      border-radius: 40px;
+    ">🚀</span>
+    <h2 style="
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.3px;
+    ">تم نشر مشروع جديد</h2>
+  </div>
+
+  <!-- Greeting -->
+  <p style="
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    color: #1f2937;
+  ">
+    مرحباً <strong style="color: #111827;">${developer.username}</strong> 👋
+  </p>
+
+  <p style="
+    margin-top: 0;
+    margin-bottom: 28px;
+    font-size: 15px;
+    color: #4b5563;
+    line-height: 1.6;
+  ">
+    تم نشر مشروع جديد يمكنك التقديم عليه الآن.
+  </p>
+
+  <!-- Divider -->
+  <hr style="
+    border: none;
+    border-top: 2px solid #e5e7eb;
+    margin: 0 0 28px 0;
+  ">
+
+  <!-- Project Card -->
+  <div style="
+    background: #ffffff;
+    padding: 24px 28px;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    margin-bottom: 30px;
+  ">
+    <h3 style="
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+    ">
+      ${ptoject.projectName}
+    </h3>
+
+    <p style="
+      margin: 0 0 20px 0;
+      font-size: 15px;
+      color: #4b5563;
+      line-height: 1.7;
+    ">
+      ${ptoject.Description}
+    </p>
+
+    <!-- CTA Button -->
+    <a
+      href="http://localhost:5173/dashboard/developer/project-proposals"
+      style="
+        display: inline-block;
+        padding: 12px 28px;
+        background: linear-gradient(145deg, #4f46e5, #4338ca);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 15px;
+        text-decoration: none;
+        border-radius: 40px;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        transition: 0.2s;
+        letter-spacing: 0.2px;
+      "
+    >
+      👀 مشاهدة المشروع
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <div style="
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 22px;
+    margin-top: 6px;
+  ">
+    <span style="font-weight: 500; color: #6b7280;">Progzila Team</span>
+    <span style="margin: 0 6px;">•</span>
+    <span>جميع الحقوق محفوظة</span>
+  </div>
+
+</div>
+
+          `,
+        })
+      )
+    );
+
+    console.log("✅ Emails Sent");
+   
+
+  } catch (err) {
+    console.error("Email Error:", err);
+  }
+});
   return successresponse(
     res,
     "تم انشاء المشروع  بنجاح",
@@ -150,7 +303,7 @@ export const getProjectProposals = asyncHandelr(async (req, res, next) => {
   })
     .populate(
       "developer",
-      "username profileImage rate completedProjects"
+      "username profileImage rating completedProjects"
     ).populate("project" , "projectName")
     .sort({ createdAt: -1 });
 
@@ -165,7 +318,7 @@ export const acceptProposal = asyncHandelr(async (req, res, next) => {
   const { proposalId } = req.params;
   const userId = req.user._id;
 
-  const ProposalData = await proposal.findById(proposalId);
+  const ProposalData = await proposal.findById(proposalId).populate("developertaked", "notificationSettings");
 
   if (!ProposalData)
     return next(new Error("العرض غير موجود", { cause: 404 }));
@@ -227,14 +380,15 @@ if (acceptedProposal) {
       developer: ProposalData.developer,
     });
   }
+  if(ProposalData.notificationSettings.projects == true){
   await createNotification({
-    receiver: userId,
-    sender: ProposalData.developer,
+    receiver:  ProposalData.developer,
+    sender: userId,
     type: "project",
     title: "لقد تم قبول عرضك",
     body: ProposalData.coverLetter,
     project: projectId,
-});
+});}
   return successresponse(res, "تم قبول العرض", 200, {
     proposal: ProposalData,
     chatId: chat._id,
@@ -248,7 +402,7 @@ export const rejectProposal = asyncHandelr(async (req, res, next) => {
   const { proposalId } = req.params;
   const userId = req.user._id;
 
-  const ProposalData = await proposal.findById(proposalId);
+  const ProposalData = await proposal.findById(proposalId).populate("developertaked", "notificationSettings");
 
   if (!ProposalData)
     return next(new Error("العرض غير موجود", { cause: 404 }));
@@ -267,14 +421,15 @@ export const rejectProposal = asyncHandelr(async (req, res, next) => {
   ProposalData.status = "rejected";
 
   await ProposalData.save();
+  if(ProposalData.notificationSettings.projects == true){
   await createNotification({
-    receiver: userId,
-    sender: ProposalData.developer,
+    receiver: ProposalData.developer,
+    sender: userId,
     type: "project",
     title: "لقد تم رفض عرضك",
     body: ProposalData.coverLetter,
     project: projectId,
-});
+});}
   return successresponse(res, "تم رفض العرض", 200, ProposalData);
 
 });
@@ -290,7 +445,7 @@ if(!userId || !projectid || !name || !amount || !type || !phone ){
 
 }
 
-const project = await projects.findById(projectid)
+const project = await projects.findById(projectid).populate("developertaked", "notificationSettings")
 if(!project){
         return next(new Error("المشروع غير موجود", { cause: 404 }));
 
@@ -314,6 +469,7 @@ if(!project){
     transferNumber :phone,
 typewallet: type
   })
+  
   await createProjectActivity({
   project: projectid,
   user: userId,
@@ -325,6 +481,7 @@ typewallet: type
     amount
   },
 });
+if(project.notificationSettings.payments == true){
   await createNotification({
     receiver:project.developertaked ,
     sender:userId ,
@@ -333,6 +490,7 @@ typewallet: type
     body: amount,
     project: projectid,
 });
+}
   return successresponse(res, "تم ارسال طلب الدفع", 200);
 
 })
@@ -449,9 +607,8 @@ export const clinetapprove = asyncHandelr(async (req, res, next) => {
   const userId = req.user._id;
   const { projectId } = req.params;
 
-  
 
-  const project = await projects.findById(projectId);
+  const project = await projects.findById(projectId).populate("developertaked", "notificationSettings");
 
   if (!project) {
     return next(
@@ -475,14 +632,18 @@ await createProjectActivity({
     taskTitle: "clientApproved",
   },
 });
+
+
+
+if(project.developertaked.notificationSettings.projects == true){
   await createNotification({
-    receiver: userId,
-    sender: project.developertaked,
+    receiver: project.developertaked,
+    sender:userId ,
     type: "project",
     title: "لقد وافق العميل علي مشروعك تم الانتهاء منه",
     body: "المشروع منتهي",
     project: projectId,
-});
+});}
   return successresponse(
     res,
     "تم الموافقة علي المشروع",
@@ -521,6 +682,7 @@ const featuredDevelopers = await Usermodel.aggregate([
   {
     $match: {
       userType: "developer",
+      compleytprofile: true
     },
   },
   {
@@ -684,7 +846,13 @@ if (!user) {
     const project= await storeModel.find({
       owner : id
     })
-
+const previousproject= await previousprojects.find({
+      owner : id
+    })
+const projectreviwes= await projectreviwe.find({
+      developer : id
+    }).populate("client", "username profileImage")
+    
      const activeProjects = await projects.countDocuments({
     developertaked: id,
     status: "in_progress",
@@ -699,9 +867,7 @@ if (!user) {
     
   });
        
-   console.log(allprojects)
-   console.log(activeProjects)
-console.log(completprojects)
+
 
   return successresponse(
     res,
@@ -712,7 +878,9 @@ console.log(completprojects)
       projects : project,
       countallproject: allprojects,
       crunetprojects: activeProjects,
-      completproject: completprojects
+      completproject: completprojects,
+      previousprojectss: previousproject,
+      projectreviwess: projectreviwes
      
     }
   );
@@ -723,7 +891,9 @@ export const getalldev = asyncHandelr(async (req, res, next) => {
 
  
 const alldev = await Usermodel.find({
-  userType : "developer"
+  userType : "developer",
+  profilpublic : "public",
+  compleytprofile: true
 });
   return successresponse(
     res,
@@ -740,7 +910,7 @@ const alldev = await Usermodel.find({
 export const getstore = asyncHandelr(async (req, res, next) => {
 
 
-const stors = await storeModel.find().populate("owner", "username profileImage");
+const stors = await storeModel.find({public : true}).populate("owner", "username profileImage");
   return successresponse(
     res,
     "تم جلب المتجر بنجاح",
@@ -851,7 +1021,7 @@ export const deleteAccount = asyncHandelr(async (req, res, next) => {
 //جلب بيانات مشروع معين
 export const getdetilsproject = asyncHandelr(async (req, res, next) => {
 const {id} = req.params
- const project = await storeModel.findById(id).populate("owner" , "username profileImage");
+ const project = await storeModel.findById(id).populate("owner" , "username profileImage rating");
 if(!project){
     return next    ( new Error("المشروع غير موجود", { cause: 404 }))
 
@@ -898,6 +1068,7 @@ if(buyed){
    return next(      new Error("لقد اشتريت المشروع من قبل", { cause: 404 }))
 
 }
+
 const done = await Order.create({
   buyer: id ,
   developer : project.owner,
@@ -909,7 +1080,12 @@ package : type,
  amount
 })
 
-
+await storeModel.findByIdAndUpdate(
+  projectid,
+  {
+    $inc: { salesCount: 1 },
+  }
+);
   return successresponse(
     res,
     "تم تفديم طلب الشراء بنجاح",
@@ -940,7 +1116,7 @@ export const getmyprojectbuyed = asyncHandelr(async (req, res, next) => {
 export const gethomedetails = asyncHandelr(async (req, res, next) => {
 
  const project = await storeModel.find().populate("owner", "username profileImage").limit(4)
-const dev = await Usermodel.find({userType :"developer"}).limit(6)
+const dev = await Usermodel.find({userType :"developer" , compleytprofile: true}).limit(6)
 
   return successresponse(
     res,
@@ -952,3 +1128,290 @@ const dev = await Usermodel.find({userType :"developer"}).limit(6)
 }
   );
 });
+
+
+//تقييم المشروع
+export const submitProjectReview = asyncHandelr(async (req, res, next) => {
+  const userId = req.user._id;
+  const { projectId, rating, comment } = req.body;
+
+  // ✅ Validation
+  if (!projectId || !rating) {
+    return next(new Error("جميع الحقول مطلوبة", { cause: 400 }));
+  }
+
+  if (rating < 1 || rating > 5) {
+    return next(new Error("التقييم يجب أن يكون بين 1 و 5", { cause: 400 }));
+  }
+
+  // ✅ التأكد إن المشروع موجود
+  const project = await storeModel.findById(projectId).populate("owner", "notificationSettings");
+  if (!project) {
+    return next(new Error("المشروع غير موجود", { cause: 404 }));
+  }
+
+  // ✅ التأكد إن المستخدم اشترى المشروع
+  const order = await Order.findOne({
+    buyer: userId,
+    project: projectId,
+    status: "paid"
+  });
+
+  if (!order) {
+    return next(new Error("يجب عليك شراء المشروع أولاً لتتمكن من تقييمه", { cause: 403 }));
+  }
+
+  // ✅ التأكد إنه مقيمش قبل كده
+  const alreadyReviewed = await Review.findOne({
+    client: userId,
+    store: projectId
+  });
+
+  if (alreadyReviewed) {
+    return next(new Error("لقد قمت بتقييم هذا المشروع من قبل", { cause: 400 }));
+  }
+
+  // ✅ إنشاء التقييم في الـ Review model المنفصل
+  const review = await Review.create({
+    developer: project.owner,
+    client: userId,
+    store: projectId,
+    rating: Number(rating),
+    comment: comment || ''
+  });
+
+  // ✅ تحديث متوسط التقييم في المشروع
+  const allReviews = await Review.find({ store: projectId });
+  const totalRatings = allReviews.length;
+  const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings;
+  
+  project.rating = Math.round(avgRating * 10) / 10;
+  project.reviewsCount = totalRatings;
+  await project.save();
+
+  // ✅ إشعار لصاحب المشروع
+  if (project.owner.notificationSettings.newReviews == true) {
+    await createNotification({
+      receiver: project.owner,
+      sender: userId,
+      type: "review",
+      title: "تقييم جديد",
+      body: `قام ${req.user.username} بتقييم مشروعك ${project.projectName} بـ ${rating} نجوم`,
+      project: projectId,
+    });
+  }
+
+  return successresponse(
+    res,
+    "تم إرسال تقييمك بنجاح",
+    200,
+   
+  );
+});
+
+// ============================
+// جلب تقييمات مشروع معين
+// ============================
+
+export const getProjectReviews = asyncHandelr(async (req, res, next) => {
+
+    const { id } = req.params;
+
+    const project = await storeModel.findById(id);
+    if (!project) {
+        return next(
+            new Error("المشروع غير موجود", {
+                cause: 404,
+            })
+        );
+    }
+
+    const reviews = await Review.find({
+        store: id,
+    })
+        .populate("client", "username profileImage")
+        .sort({ createdAt: -1 });
+
+
+    
+
+    return successresponse(
+        res,
+        "تم جلب تقييمات المشروع بنجاح",
+        200,
+        {
+        
+            reviews,
+        }
+    );
+});
+//طلب دعم فني للعميل
+export const createsupport = asyncHandelr(async (req, res, next) => {
+
+  const { storeproject } = req.body;
+  const userId = req.user._id;
+
+const found = await chatsupport.findOne({
+  project : storeproject ,
+  client : userId
+})
+if (found) {
+      return next(new Error("يوجد شات خاص بهذا الدعم الفني", { cause: 404 }));
+
+}
+
+  const Project = await storeModel.findById(storeproject);
+
+
+  if (!Project)
+    return next(new Error("المشروع غير موجود", { cause: 404 }));
+
+
+  const  chats = await chatsupport.create({
+      project: storeproject,
+      client: userId,
+      developer: Project.owner,
+    });
+  
+  return successresponse(res, "تم انشاء شات الدعم", 200, 
+
+    {chats}
+  );
+
+});
+
+//تقيم مشروع للمبرمج عمل حر
+export const submitReview = asyncHandelr(async (req, res, next) => {
+  const userId = req.user._id;
+  const {  rating, comment } = req.body;
+const {projectId} = req.params ;
+  // ✅ Validation
+  if (!projectId || !rating) {
+    return next(new Error("جميع الحقول مطلوبة", { cause: 400 }));
+  }
+
+  if (rating < 1 || rating > 5) {
+    return next(new Error("التقييم يجب أن يكون بين 1 و 5", { cause: 400 }));
+  }
+
+  // ✅ التأكد إن المشروع موجود
+  const project = await projects.findById(projectId).populate("developertaked", "notificationSettings");
+  if (!project) {
+    return next(new Error("المشروع غير موجود", { cause: 404 }));
+  }
+
+  // ✅ التأكد إن المستخدم صاحب المشروع
+  
+if (!project.owner.equals(userId)) {
+  return next(
+    new Error("يجب أن تكون صاحب المشروع لكي تتمكن من تقييمه", {
+      cause: 403,
+    })
+  );
+}
+
+  // ✅ التأكد إنه مقيمش قبل كده
+  const alreadyReviewed = await projectreviwe.findOne({
+    client: userId,
+    project: projectId
+  });
+
+  if (alreadyReviewed) {
+    return next(new Error("لقد قمت بتقييم هذا المشروع من قبل", { cause: 400 }));
+  }
+const dev = await Usermodel.findById(project.developertaked)
+  // ✅ إنشاء التقييم في الـ Review model المنفصل
+  const review = await projectreviwe.create({
+    developer: project.developertaked ,
+    client:userId ,
+    project: projectId,
+    rating: Number(rating),
+    comment: comment || ''
+  });
+
+  // ✅ تحديث متوسط التقييم في المشروع
+  const allReviews = await projectreviwe.find({ developer: project.developertaked });
+  const totalRatings = allReviews.length;
+  const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings;
+  
+  dev.rating = Math.round(avgRating * 10) / 10;
+  dev.ratingsCount = totalRatings;
+  await dev.save();
+
+  // ✅ إشعار لصاحب المشروع
+  if (project.developertaked.notificationSettings.newReviews == true) {
+    await createNotification({
+      receiver: project.developertaked,
+      sender: userId,
+      type: "review",
+      title: "تقييم جديد",
+      body: `قام ${req.user.username} بتقييم مشروعك ${project.projectName} بـ ${rating} نجوم`,
+      project: projectId,
+    });
+  }
+
+  return successresponse(
+    res,
+    "تم إرسال تقييمك بنجاح",
+    200,
+   
+  );
+});
+//اضافة بلاغ
+export const addreport = asyncHandelr(async (req, res, next) => {
+  const owner = req.user?._id;
+
+  if (!owner) {
+    return next(
+      new Error("التوكن مطلوب", {
+        cause: 401,
+      })
+    );
+  }
+
+  const {
+    
+    fullDescription,
+  
+  } = req.body;
+
+ 
+  
+
+  // ==========================
+  // Upload Images
+  // ==========================
+
+  const images = [];
+
+  if (req.files?.images?.length) {
+    for (const file of req.files.images) {
+      const result = await uploadToCloudinary(file, {
+        folder: "projects/images",
+        resource_type: "image",
+      });
+
+      images.push(result.secure_url);
+    }
+  }
+
+  // ==========================
+  // Create Project
+  // ==========================
+
+  const project = await reportModel.create({
+   owner,
+   
+    fullDescription,
+   
+    images,
+  });
+
+  return successresponse(
+    res,
+    "تم ارسال بلاغك بنجاح",
+    201,
+    
+  );
+});
+

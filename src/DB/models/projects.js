@@ -20,6 +20,11 @@ const projectsSchema = new Schema({
       required: true,
       trim: true,
     },
+      currency: {
+      type: String,
+      required: true,
+    
+    },
       
     category: {
       type: String,

@@ -21,6 +21,9 @@ export const login = asyncHandelr(async(req , res , next)=>{
     if (users.isBlocked == true) {
         return next(new Error("الايميل محظور تواصل مع الدعم", { cause: 400 }));
     }
+    if(users.deleted == true){
+              return next(new Error("لقد قمت بحذف الحساب", { cause: 400 }));
+    }
     
      const ismatch = await comparehash({
         planText: password ,

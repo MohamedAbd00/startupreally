@@ -1,7 +1,8 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { acceptProposal, Addbatch, addfeatures, addObjective, buyproject, clinetapprove, clinetdashboard, compliteprofileclient, createproject, deleteAccount, getalldev, getAllImages, getClientProjects, getdetilsproject, getdevprofile, gethomedetails, getmyprojectbuyed, getProjectProposals, getstore, rejectProposal, updateAccountSettings, updateNotificationSettings } from "./service/clinet.service.js";
+import { acceptProposal, Addbatch, addfeatures, addObjective, addreport, buyproject, clinetapprove, clinetdashboard, compliteprofileclient, createproject, createsupport, deleteAccount, getalldev, getAllImages, getClientProjects, getdetilsproject, getdevprofile, gethomedetails, getmyprojectbuyed, getProjectProposals, getProjectReviews, getstore, rejectProposal, submitProjectReview, submitReview, updateAccountSettings, updateNotificationSettings } from "./service/clinet.service.js";
+import { uploadStoreProject } from "../../utlis/multer/clouid.multern.js";
 const router = Router()
 //اكمال الملف الشخصي
 router.put(
@@ -135,5 +136,33 @@ router.get(
    
   gethomedetails
 );
+//تقيم المشروع الي اشتراه العميل
+router.post(
+  "/submitProjectReview",
+   middlewere(),
+  submitProjectReview
+);
+
+//جلب تقيميات مشروع معين
+router.get('/getProjectReviews/:id',   getProjectReviews);
+//انشاء دعم فني
+router.post('/createsupport',  middlewere(),  createsupport);
+router.post(
+  "/submitReview/:projectId",
+   middlewere(),
+  submitReview
+);
+router.post(
+  "/addreport",
+  middlewere(),
+  uploadStoreProject.fields([
+    {
+      name: "images",
+      maxCount: 10,
+    }
+  ]),
+  addreport
+);
+
 
 export default router

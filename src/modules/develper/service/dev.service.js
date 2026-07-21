@@ -22,7 +22,8 @@ import Message from "../../../DB/models/massege.js";
 import Notification from "../../../DB/models/Notification.js";
 import Tasks from "../../../DB/models/Tasks.js";
 import StoreView from "../../../DB/models/ProductViews.js";
-
+import projectreviwe from "../../../DB/models/projectreviwe.js";
+import previousprojects from "../../../DB/models/previousprojects.js"
 
 //استكمال البيانات
 export const updateprofiledev = asyncHandelr(async (req, res, next) => {
@@ -288,7 +289,16 @@ export const createProject = asyncHandelr(async (req, res, next) => {
       })
     );
   }
-
+const projectCount = await storeModel.countDocuments({
+   owner
+})
+if (req.user.plan === "free" && projectCount >= 3) {
+  return next(
+    new Error("الرجاء ترقية الخطة لنشر المزيد من المشاريع", {
+      cause: 403,
+    })
+  );
+}
   const {
     projectName,
     category,
@@ -694,6 +704,18 @@ export const createProposal = asyncHandelr(async (req, res, next) => {
       })
     );
   }
+const previousProjectCount = await previousprojects.countDocuments({
+  owner: developer,
+});
+
+if (previousProjectCount < 3) {
+  return next(
+    new Error("لازم تكون ناشر 3 مشاريع في سابقة الأعمال على الأقل", {
+      cause: 409,
+    })
+  );
+}
+
 
   const Proposl = await proposal.create({
     project: projectId,
@@ -730,7 +752,7 @@ export const getOpenProjects = asyncHandelr(async (req, res, next) => {
       { developertaked: { $exists: false } }
     ]
   })
-    .populate("owner", "username profileImage")
+    .populate("owner", "username profileImage location")
     .sort({ createdAt: -1 });
 
   // جلب عدد العروض لكل المشاريع مرة واحدة
@@ -767,7 +789,7 @@ export const getOpenProjects = asyncHandelr(async (req, res, next) => {
     deadline: project.deadline,
 
     skills: project.skills,
-
+currency : project.currency,
     proposals: countMap.get(project._id.toString()) || 0,
 
     createdAt: project.createdAt,
@@ -917,7 +939,7 @@ export const createTask = asyncHandelr(async (req, res, next) => {
 
   const { projectId, title, description, dueDate } = req.body;
 
-  const project = await Projects.findById(projectId);
+  const project = await Projects.findById(projectId).populate("owner", "notificationSettings");
 
   if (!project)
     return next(new Error("المشروع غير موجود", { cause: 404 }));
@@ -947,6 +969,15 @@ await createProjectActivity({
     taskTitle: task.title,
   },
 });
+if(project.notificationSettings.tasks == true){
+  await createNotification({
+    receiver: project.owner,
+    sender:userId ,
+    type: "tasks",
+    title: "لقد تم اضافة مرلحة جديدة",
+    body: "مرحلة جديدة",
+    project: projectId,
+});}
   return successresponse(res, "تم إنشاء المهمة", 201, {
     task,
   });
@@ -1057,7 +1088,7 @@ await createProjectActivity({
 export const addMember = asyncHandelr(async (req, res, next) => {
   const { projectId, role, email } = req.body;
 
-  const project = await Projects.findById(projectId);
+  const project = await Projects.findById(projectId).populate("owner", "notificationSettings");
 
   if (!project) {
     return next(new Error("المشروع غير موجود", { cause: 404 }));
@@ -1105,7 +1136,15 @@ await createProjectActivity({
   },
 });
   await project.save();
-
+if(project.notificationSettings.projects == true){
+  await createNotification({
+    receiver: project.owner,
+    sender:userId ,
+    type: "projects",
+    title: "لقد تم اضافة عضو جديد في فريق العمل",
+    body: "عضو جديدة",
+    project: projectId,
+});}
   return res.status(201).json({
     message: "تم إضافة العضو بنجاح",
     members: project.members,
@@ -2509,6 +2548,7 @@ export const getDeveloperDashboard = async (req, res) => {
       upcomingTasks,
       topSellingProducts,
       latestNotifications,
+        reviewStats,
     ] = await Promise.all([
       
       // -- إحصائيات المشاريع (إجمالي، مكتمل، جاري) في استعلام واحد بدلاً من 3 --
@@ -2660,6 +2700,16 @@ export const getDeveloperDashboard = async (req, res) => {
       ]),
       
       Notification.find({ receiver: developerId }).sort({ createdAt: -1 }).limit(5).lean(),
+      projectreviwe.aggregate([
+  { $match: { developer: developerId } },
+  {
+    $group: {
+      _id: null,
+      averageRating: { $avg: "$rating" },
+      totalReviews: { $sum: 1 },
+    },
+  },
+]),
     ]);
 
     // =========================================================================
@@ -2680,7 +2730,10 @@ export const getDeveloperDashboard = async (req, res) => {
     // عمليات السحب (Withdraws)
     const totalWithdrawn = withdrawsResult.find(w => w._id === "completed")?.total || 0;
     const pendingWithdraw = withdrawsResult.find(w => w._id === "pending")?.total || 0;
-
+const reviews = reviewStats[0] || {
+  averageRating: 0,
+  totalReviews: 0,
+};
     // =========================================================================
     // 3. الحسابات المالية (كما تم طلبها بالضبط)
     // =========================================================================
@@ -2765,7 +2818,8 @@ export const getDeveloperDashboard = async (req, res) => {
 
         totalWithdrawn,
         pendingWithdraw,
-
+averageRating: Number((reviews.averageRating || 0).toFixed(1)),
+totalReviews: reviews.totalReviews,
         totalChats,
         totalTasks,
 
@@ -2793,6 +2847,7 @@ export const getDeveloperDashboard = async (req, res) => {
       upcomingTasks,
       topSellingProducts,
       latestNotifications,
+    
     });
 
   } catch (error) {
@@ -2956,4 +3011,205 @@ export const requestwithdraw = asyncHandelr(async (req, res, next) => {
         }
     );
 });
+//اضافة اعمال سابقة
+export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
+  const owner = req.user?._id;
 
+  if (!owner) {
+    return next(
+      new Error("التوكن مطلوب", {
+        cause: 401,
+      })
+    );
+  }
+
+  const {
+    projectName,
+    category,
+    shortDescription,
+    fullDescription,
+    demoUrl,
+    githubUrl,
+    technologies,
+    mainFeatures,
+    videoUrl,
+  } = req.body;
+
+  if (
+    !projectName ||
+    !category ||
+    !shortDescription 
+  ) {
+    return next(
+      new Error("جميع الحقول المطلوبة يجب إدخالها", {
+        cause: 400,
+      })
+    );
+  }
+
+  // ==========================
+  // Upload Images
+  // ==========================
+
+  const images = [];
+
+  if (req.files?.images?.length) {
+    for (const file of req.files.images) {
+      const result = await uploadToCloudinary(file, {
+        folder: "projects/images",
+        resource_type: "image",
+      });
+
+      images.push(result.secure_url);
+    }
+  }
+
+  // ==========================
+  // Upload Video
+  // ==========================
+
+  let uploadedVideoUrl = videoUrl || "";
+
+  if (req.files?.video?.length) {
+    const result = await uploadToCloudinary(req.files.video[0], {
+      folder: "projects/videos",
+      resource_type: "video",
+    });
+
+    uploadedVideoUrl = result.secure_url;
+  }
+  // ==========================
+  // Create Project
+  // ==========================
+
+  const project = await previousprojects.create({
+    owner,
+    projectName,
+    category,
+    shortDescription,
+    fullDescription,
+    demoUrl,
+    githubUrl,
+  
+
+    technologies:
+      typeof technologies === "string"
+        ? JSON.parse(technologies)
+        : technologies,
+
+    mainFeatures:
+      typeof mainFeatures === "string"
+        ? JSON.parse(mainFeatures)
+        : mainFeatures,
+
+    videoUrl: uploadedVideoUrl,
+
+    images,
+  });
+
+  return successresponse(
+    res,
+    "تم إنشاء المشروع بنجاح",
+    201,
+    {
+      project,
+    }
+  );
+});
+//جلب الاعمال السابقة للمبرمج
+export const getpreviousprojects = asyncHandelr(async (req, res, next) => {
+const {id} = req.body
+
+
+ 
+
+ const myprojects = await previousprojects.find({owner: id})
+
+  return successresponse(
+    res,
+    "تم جلب جميع الاعمال السابقة بنجاح",
+    200,
+    {  myprojects }
+  );
+});
+// حذف عمل سابق لدي المبرمج
+export const deletepreviousprojects = asyncHandelr(async (req, res, next) => {
+  const { projectId } = req.body;
+  const owner = req.user?._id;
+
+  if (!projectId) {
+    return next(
+      new Error("الايدي مطلوب", {
+        cause: 400,
+      })
+    );
+  }
+
+  const project = await previousprojects.findById(projectId);
+
+  if (!project) {
+    return next(
+      new Error("المشروع غير موجود", {
+        cause: 404,
+      })
+    );
+  }
+
+  if (project.owner.toString() !== owner.toString()) {
+    return next(
+      new Error("غير مصرح لك بحذف هذا المشروع", {
+        cause: 403,
+      })
+    );
+  }
+
+  // ==========================
+  // حذف الصور
+  // ==========================
+
+  if (project.images?.length) {
+    for (const image of project.images) {
+      try {
+        const publicId = image
+          .split("/upload/")[1]
+          .replace(/^v\d+\//, "")
+          .split(".")[0];
+
+        await cloudinary.uploader.destroy(publicId);
+      } catch (err) {
+        console.log("Error deleting image:", err);
+      }
+    }
+  }
+
+  // ==========================
+  // حذف الفيديو
+  // ==========================
+
+  if (project.videoUrl) {
+    try {
+      const publicId = project.videoUrl
+        .split("/upload/")[1]
+        .replace(/^v\d+\//, "")
+        .split(".")[0];
+
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: "video",
+      });
+    } catch (err) {
+      console.log("Error deleting video:", err);
+    }
+  }
+
+  // ==========================
+  // حذف المشروع
+  // ==========================
+
+  await project.deleteOne();
+
+  return successresponse(
+    res,
+    "تم حذف المشروع بنجاح",
+    200
+  );
+});

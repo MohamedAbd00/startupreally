@@ -3,6 +3,7 @@ import Projects from "../../DB/models/projects.js";
 import Messages from "../../DB/models/massege.js";
 import { asyncHandelr } from "../../utlis/response/error.response.js";
 import { successresponse } from "../../utlis/response/success.response.js";
+import chatsupport from "../../DB/models/chatsupport.js";
 
 
 // =======================================
@@ -61,7 +62,6 @@ export const getProjectChat = asyncHandelr(async (req, res, next) => {
         select: "username profileImage",
       },
     });
-console.log(chat)
   if (!chat)
     return next(new Error("Chat not found", { cause: 404 }));
 
@@ -98,6 +98,61 @@ console.log(chat)
     unreadCount,
   });
 });
+//جلب شات الدعم الفني
+export const getsupportChat = asyncHandelr(async (req, res, next) => {
+  const userId = req.user._id;
+  const { projectId } = req.params;
+
+  const chat = await chatsupport.findOne({
+    project: projectId,
+  })
+    .populate("project", "projectName")
+    .populate("client", "username profileImage isOnline lastSeen")
+    .populate("developer", "username profileImage isOnline lastSeen")
+    .populate({
+      path: "lastMessage",
+      populate: {
+        path: "sender",
+        select: "username profileImage",
+      },
+    });
+  if (!chat)
+    return next(new Error("Chat not found", { cause: 404 }));
+
+  const allowed =
+    chat.client._id.toString() === userId.toString() ||
+    chat.developer._id.toString() === userId.toString();
+
+  if (!allowed)
+    return next(new Error("غير مصرح", { cause: 403 }));
+
+  const otherUser =
+    chat.client._id.toString() === userId.toString()
+      ? chat.developer
+      : chat.client;
+
+  const unreadCount = await Messages.countDocuments({
+    chat: chat._id,
+    sender: { $ne: userId },
+    isRead: false,
+  });
+
+  return successresponse(res, "Done", 200, {
+    chatId: chat._id,
+
+    project: {
+      _id: chat.project._id,
+      projectName: chat.project.projectName,
+    },
+
+    otherUser,
+
+    lastMessage: chat.lastMessage,
+
+    unreadCount,
+  });
+});
+
 //جلب محادثات المستخدم
 export const getMyChats = asyncHandelr(async (req, res, next) => {
   const userId = req.user._id;
@@ -181,5 +236,78 @@ export const getMessages = asyncHandelr(async (req, res) => {
 
   return successresponse(res, "Done", 200, {
     messages,
+  });
+});
+//جلب محادثات الدعم الفني الخاص بالمبرج
+export const getMyChatsupport = asyncHandelr(async (req, res, next) => {
+  const userId = req.user._id;
+
+  const chats = await chatsupport.find({
+  
+    
+       developer: userId 
+
+  })
+    .populate("project", "projectName")
+    .populate("client", "username profileImage isOnline lastSeen")
+    .populate("developer", "username profileImage isOnline lastSeen")
+    .populate({
+      path: "lastMessage",
+      populate: {
+        path: "sender",
+        select: "username profileImage",
+      },
+    })
+    .sort({ updatedAt: -1 });
+
+  const data = await Promise.all(
+    chats.map(async (chat) => {
+      const isClient =
+        chat.client?._id?.toString() === userId.toString();
+
+      const otherUser = isClient
+        ? chat.developer
+        : chat.client;
+
+      const unreadCount = await Messages.countDocuments({
+        chat: chat._id,
+        sender: { $ne: userId },
+        isRead: false,
+      });
+
+      return {
+        chatId: chat._id,
+
+        projectId: chat.project?._id,
+
+        projectName: chat.project?.projectName,
+
+        user: otherUser
+          ? {
+              _id: otherUser._id,
+              username: otherUser.username,
+              profileImage: otherUser.profileImage,
+              isOnline: otherUser.isOnline,
+              lastSeen: otherUser.lastSeen,
+            }
+          : {
+              _id: null,
+              username: "محذوف",
+              profileImage: null,
+              isOnline: false,
+              lastSeen: null,
+            },
+
+        lastMessage: chat.lastMessage,
+
+        unreadCount,
+
+        updatedAt: chat.updatedAt,
+      };
+    })
+  );
+
+  return successresponse(res, "تم جلب المحادثات", 200, {
+    chats: data,
   });
 });

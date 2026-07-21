@@ -17,6 +17,9 @@ app.use(cors({
   origin: "https://progzila.com",
 
    
+
+//  origin: "http://localhost:5173",
+
   credentials: true
 }));
 connectDB();

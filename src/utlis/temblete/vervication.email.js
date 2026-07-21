@@ -38,7 +38,7 @@ export const emailtemplet = (code) => {
 <td style="background:linear-gradient(135deg, #0f172a, #334155); text-align:center; padding:40px 20px;">
 <!-- يمكنك تغيير هذا الرابط بصورة لوجو Progzila الخاص بك لاحقاً -->
 <img
-src="https://res.cloudinary.com/dldmjxihf/image/upload/v1783782806/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_tuwbng.jpg"
+src="https://res.cloudinary.com/dldmjxihf/image/upload/v1784406487/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_d2udqh.png"
 alt="Progzila Logo"
 width="180"
 style="display:block; margin:auto;"
@@ -119,7 +119,7 @@ export const forgotPasswordTemplateAr = (code) => {
 <tr>
 <td style="background:linear-gradient(135deg, #0f172a, #334155); text-align:center; padding:40px 20px;">
 <img
-src="https://res.cloudinary.com/dldmjxihf/image/upload/v1783782806/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_tuwbng.jpg"
+src="https://res.cloudinary.com/dldmjxihf/image/upload/v1784406487/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_d2udqh.png"
 alt="Progzila Logo"
 width="180"
 style="display:block; margin:auto;"

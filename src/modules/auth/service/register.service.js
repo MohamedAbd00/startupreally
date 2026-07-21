@@ -18,7 +18,7 @@ export const singupdev = asyncHandelr(async(req , res , next )=>{
         return next(new Error("الايميل موجود ", { cause: 400 }));
     }
 
-     const code =generateCode(10)
+     const code =generateCode(6)
         const hash = generatehash({planText:password})
 await sendemail({
     to: email,
@@ -58,7 +58,7 @@ export const singupclint = asyncHandelr(async(req , res , next )=>{
         return next(new Error("الايميل موجود ", { cause: 400 }));
     }
 
-     const code =generateCode(10)
+     const code =generateCode(6)
         const hash = generatehash({planText:password})
 await sendemail({
     to: email,

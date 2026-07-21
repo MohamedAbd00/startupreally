@@ -9,8 +9,8 @@ const chatSchema = new Schema(
         type:Schema.Types.ObjectId,
         ref:"projects",
         unique:true,
-        required:true
     },
+   
 
     client:{
         type:Schema.Types.ObjectId,

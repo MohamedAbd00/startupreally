@@ -5,7 +5,9 @@ import {
   createChat,
   getMyChats,
   getMessages,
-  getProjectChat
+  getProjectChat,
+  getsupportChat,
+  getMyChatsupport
 } from "./service/chat.js";
 
 const router = Router();
@@ -16,6 +18,11 @@ router.get(
   middlewere(),
   getMyChats
 );
+router.get(
+  "/getMyChatsupport",
+  middlewere(),
+  getMyChatsupport
+);
 
 // إنشاء الشات (أو إرجاعه إذا كان موجود)
 router.post(
@@ -23,6 +30,7 @@ router.post(
   middlewere(),
   createChat
 );
+//جلب الرسائل
 router.get(
   "/messages/:chatId",
   middlewere(),
@@ -35,5 +43,12 @@ router.get(
   middlewere(),
   getProjectChat
 );
+//جلب شات الدعم الفني
+router.get(
+  "/support/:projectId",
+  middlewere(),
+  getsupportChat
+);
+
 
 export default router;

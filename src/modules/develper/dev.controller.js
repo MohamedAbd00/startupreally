@@ -1,7 +1,7 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { addMember,  createFolder, createProject, createProposal, createTask, deleteAccount, deleteFolder, deleteProject, deleteProjectFile, deleteTask, getallprojects, getDeveloperDashboard, getDeveloperEarnings, GetDeveloperProjects, getFolderFiles, getMyProposals, getOpenProjects, getProjectActivity, getProjectFolders, getProjectMembers, getProjectRoom, getProjectTasks, removeMember, requestwithdraw, updateAccountSettings, updateNotificationSettings, updateprofiledev, updateProject, updateProjectLinks, updatestate, updateTaskStatus, uploadProjectFil } from "./service/dev.service.js";
+import { addMember,  addpreviousprojects,  createFolder, createProject, createProposal, createTask, deleteAccount, deleteFolder, deletepreviousprojects, deleteProject, deleteProjectFile, deleteTask, getallprojects, getDeveloperDashboard, getDeveloperEarnings, GetDeveloperProjects, getFolderFiles, getMyProposals, getOpenProjects, getpreviousprojects, getProjectActivity, getProjectFolders, getProjectMembers, getProjectRoom, getProjectTasks, removeMember, requestwithdraw, updateAccountSettings, updateNotificationSettings, updateprofiledev, updateProject, updateProjectLinks, updatestate, updateTaskStatus, uploadProjectFil } from "./service/dev.service.js";
 import { upload, uploadProjectFiles   } from "../../utlis/multer/cloud.multer.js";
 import {  uploadStoreProject   } from "../../utlis/multer/clouid.multern.js";
 
@@ -192,7 +192,38 @@ router.get(
 );
 //جلب بيانات الداش بورد
 router.get('/getDeveloperDashboard',   middlewere(), getDeveloperDashboard);
+//طلب سحب
 router.post('/requestwithdraw',   middlewere(), requestwithdraw);
+//اضافة اهمال سابقة
+router.post(
+  "/addpreviousprojects",
+  middlewere(),
+  uploadStoreProject.fields([
+    {
+      name: "images",
+      maxCount: 10,
+    },
+    {
+      name: "video",
+      maxCount: 1,
+    },
+   
+  ]),
+  addpreviousprojects
+);
+//جلب الاعمال السابقة لدي المبرمج
+router.post(
+  "/getpreviousprojects",
+  getpreviousprojects
+);
+
+//حذف عمل سابق لدي المبرمج 
+router.delete(
+  "/deletepreviousprojects",
+middlewere(),
+ 
+  deletepreviousprojects
+);
 
 
 export default router

@@ -4,6 +4,7 @@ import Users from "../../DB/models/usermodel.js";
 import Chats from "../../DB/models/chat.js";
 import Messages from "../../DB/models/massege.js";
 import { createNotification } from "../../utlis/activity/createNotification.js";
+import chatsupport from "../../DB/models/chatsupport.js";
 const onlineUsers = new Map();
 const extractId = (data, key = "userId") => {
   if (!data) return null;
@@ -238,6 +239,35 @@ socket.on("delete-all-notifications", async (data) => {
       }
     });
 
+
+
+
+    //==============================
+    //chat join support
+    //==============================
+     socket.on("join-chat-support", async (chatId) => {
+      try {
+        if (!chatId || !socket.userId) return;
+
+        const chat = await chatsupport.findById(chatId);
+
+        if (!chat) return;
+
+        if (
+          chat.client.toString() !== socket.userId &&
+          chat.developer.toString() !== socket.userId
+        ) {
+          return;
+        }
+
+        socket.join(chatId);
+
+        console.log(`Joined Chat : ${chatId}`);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     // ==========================
     // LEAVE CHAT
     // ==========================
@@ -301,7 +331,6 @@ socket.on("delete-all-notifications", async (data) => {
       seen: false,
       createdAt: new Date().toISOString(),
     };
-
     // إرسال الرسالة فوراً للطرفين
     io.to(chatId).emit("receive-message", messagePayload);
 

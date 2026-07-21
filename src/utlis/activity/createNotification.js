@@ -13,9 +13,20 @@ export const createNotification = async ({
   metadata = {},
 }) => {
   try {
+    // استخراج ID المستقبل مهما كان نوع receiver
+    const receiverId =
+      typeof receiver === "object" && receiver !== null
+        ? (receiver._id || receiver.id)?.toString()
+        : receiver?.toString();
+
+    if (!receiverId) {
+      console.error("❌ Invalid receiver:", receiver);
+      return null;
+    }
+
     // إنشاء الإشعار
     const notification = await Notification.create({
-      receiver,
+      receiver: receiverId,
       sender,
       type,
       title,
@@ -42,24 +53,35 @@ export const createNotification = async ({
 
     // عدد الإشعارات غير المقروءة
     const unreadCount = await Notification.countDocuments({
-      receiver,
+      receiver: receiverId,
       isRead: false,
     });
 
-    // لو المستخدم Online ابعتله الإشعار والعداد
-    const socketId = onlineUsers.get(receiver.toString());
+    // البحث عن Socket الخاص بالمستخدم
+    const socketId = onlineUsers.get(receiverId);
 
+    console.log({
+      type,
+      receiverId,
+      socketId,
+    });
+
+    // إرسال الإشعار لحظيًا إذا كان المستخدم Online
     if (socketId) {
       io.to(socketId).emit("new-notification", notification);
 
       io.to(socketId).emit("notification-count", {
         count: unreadCount,
       });
+
+      console.log(`🔔 Notification sent to ${receiverId}`);
+    } else {
+      console.log(`🟡 User ${receiverId} is offline`);
     }
 
     return notification;
   } catch (err) {
-    console.log("Notification Error:", err);
+    console.error("❌ Notification Error:", err);
     return null;
   }
 };

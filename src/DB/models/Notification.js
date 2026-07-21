@@ -29,6 +29,7 @@ const notificationSchema = new Schema(
         "task",
         "folder",
         "file",
+        "review",
         "payment",
         "system",
       ],

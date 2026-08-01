@@ -16,6 +16,7 @@ import Payment from "../../../DB/models/Payment .js";
 import projects from "../../../DB/models/projects.js";
 import { createNotification } from "../../../utlis/activity/createNotification.js";
 import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
+import { uploadToR2  } from "../../../utlis/multer/cloudflare.js";
 import Order from "../../../DB/models/Order.js";
 import Withdraw from "../../../DB/models/Withdraw.js";
 import Message from "../../../DB/models/massege.js";
@@ -356,12 +357,11 @@ if (req.user.plan === "free" && projectCount >= 3) {
   let uploadedVideoUrl = videoUrl || "";
 
   if (req.files?.video?.length) {
-    const result = await uploadToCloudinary(req.files.video[0], {
-      folder: "projects/videos",
-      resource_type: "video",
-    });
+ const result = await uploadToR2(req.files.video[0], {
+  folder: "projects/videos",
+});
 
-    uploadedVideoUrl = result.secure_url;
+uploadedVideoUrl = result.secure_url;
   }
 
   // Upload ZIP
@@ -369,13 +369,10 @@ if (req.user.plan === "free" && projectCount >= 3) {
 let downloadurl = "";
 
 if (req.files?.downloadurl?.length) {
-  const result = await uploadToCloudinary(
-    req.files.downloadurl[0],
-    {
-      folder: "projects/files",
-      resource_type: "raw",
-    }
-  );
+   const result = await uploadToR2(req.files.downloadurl[0], {
+    folder: "projects/files",
+    download: true,
+  });
 
   downloadurl = result.secure_url;
 }

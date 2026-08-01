@@ -77,7 +77,7 @@ export const verifyemail = asyncHandelr(async(req , res , next)=>{
                  return next(new Error("الكود غير صحيح", { cause: 400 }));
 
     }
-    await Usermodel.updateOne({email} , {isConfirmed: true})
+    await Usermodel.updateOne({email} , {isConfirmed: true, code: ""})
 
         return successresponse(
         res,
@@ -86,7 +86,33 @@ export const verifyemail = asyncHandelr(async(req , res , next)=>{
      
     );
 })
+//اعادة ارسال الرمز
+export const resendverifyemail = asyncHandelr(async(req , res , next)=>{
+    const {email} = req.body
+    if(!email){
+         return next(new Error("جميع الحقول مطلوبة", { cause: 400 }));
+    }
 
+    const users = await Usermodel.findOne({email})
+    if(!users){
+         return next(new Error("الايميل غير موجود", { cause: 400 }));
+    }
+    
+   const code =generateCode(6)
+  await sendemail({
+      to: email,
+      subject: "Verify Your Email",
+      code: code,
+  })
+    await Usermodel.updateOne({email} , {emailotp: code})
+
+        return successresponse(
+        res,
+        "تم اعادة ارسال الكود",
+        200,
+     
+    );
+})
 // اكمال الملف الشخصي مبرمج
 export const completeProfile = asyncHandelr(async (req, res, next) => {
   const { email } = req.body;

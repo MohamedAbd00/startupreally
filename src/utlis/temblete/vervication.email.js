@@ -172,3 +172,245 @@ ${code}
 </html>
 `;
 };
+
+// templates/acceptedEmail.js
+
+export const acceptedEmail = ({ developerName = "", projectUrl }) => {
+  const date = new Date().toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const year = new Date().getFullYear();
+
+  return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تم قبول العرض</title>
+</head>
+
+<body style="
+margin:0;
+padding:40px 20px;
+background:#f3f4f6;
+font-family:Tahoma,Arial,sans-serif;
+direction:rtl;
+">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td align="center">
+
+<table role="presentation"
+width="620"
+cellpadding="0"
+cellspacing="0"
+style="
+max-width:620px;
+background:#ffffff;
+border-radius:18px;
+overflow:hidden;
+box-shadow:0 8px 30px rgba(0,0,0,.12);
+">
+
+<!-- Header -->
+<tr>
+<td
+align="center"
+style="
+padding:45px 30px;
+background:linear-gradient(135deg,#4f46e5,#7c3aed,#ec4899);
+color:#ffffff;
+">
+
+<div style="font-size:60px;">🚀</div>
+
+<h1 style="
+margin:10px 0 5px;
+font-size:34px;
+font-weight:bold;
+">
+Progzila
+</h1>
+
+<p style="
+margin:0;
+font-size:15px;
+opacity:.9;
+">
+منصة المبرمجين العربية
+</p>
+
+</td>
+</tr>
+
+<!-- Body -->
+<tr>
+<td style="padding:45px 35px;">
+
+<div style="text-align:center;">
+
+<div style="font-size:70px;">🎉</div>
+
+<h2 style="
+margin:15px 0;
+font-size:30px;
+color:#111827;
+">
+مبروك!
+</h2>
+
+<p style="
+font-size:18px;
+color:#374151;
+line-height:1.9;
+margin:0;
+">
+${developerName ? `مرحباً <strong>${developerName}</strong><br><br>` : ""}
+لقد قام العميل بقبول العرض الذي قدمته.
+<br>
+يمكنك الآن البدء في تنفيذ المشروع.
+</p>
+
+</div>
+
+<!-- Status Box -->
+
+<table
+role="presentation"
+width="100%"
+cellpadding="0"
+cellspacing="0"
+style="
+margin-top:35px;
+background:#f9fafb;
+border:1px solid #e5e7eb;
+border-radius:12px;
+">
+
+<tr>
+<td style="padding:18px;">
+
+<table width="100%">
+
+<tr>
+
+<td style="padding:6px 0;color:#6b7280;">
+حالة العرض
+</td>
+
+<td align="left"
+style="
+padding:6px 0;
+color:#16a34a;
+font-weight:bold;
+">
+✅ مقبول
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:6px 0;color:#6b7280;">
+تاريخ القبول
+</td>
+
+<td align="left"
+style="padding:6px 0;">
+${date}
+</td>
+
+</tr>
+
+<tr>
+
+<td style="padding:6px 0;color:#6b7280;">
+المنصة
+</td>
+
+<td align="left"
+style="
+padding:6px 0;
+color:#4f46e5;
+font-weight:bold;
+">
+🚀 Progzila
+</td>
+
+</tr>
+
+</table>
+
+</td>
+</tr>
+
+</table>
+
+<!-- Button -->
+
+<div style="text-align:center;margin-top:40px;">
+
+<a
+href="${projectUrl}"
+style="
+display:inline-block;
+background:#4f46e5;
+color:#ffffff;
+text-decoration:none;
+padding:18px 34px;
+font-size:18px;
+font-weight:bold;
+border-radius:12px;
+">
+🚀 اذهب إلى مشاريعي
+</a>
+
+</div>
+
+<!-- Footer -->
+
+<div
+style="
+margin-top:45px;
+padding-top:25px;
+border-top:1px solid #eeeeee;
+text-align:center;
+">
+
+<p style="
+margin:0;
+font-size:13px;
+color:#6b7280;
+">
+شكراً لاستخدامك منصة
+<strong style="color:#4f46e5;">Progzila</strong>
+</p>
+
+<p style="
+margin-top:12px;
+font-size:12px;
+color:#9ca3af;
+">
+© ${year} Progzila. جميع الحقوق محفوظة.
+</p>
+
+</div>
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`;
+};

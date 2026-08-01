@@ -1,6 +1,6 @@
 import Router from "express"
 import { singupclint, singupdev } from "./service/register.service.js"
-import { changePassword, changePasswordemail, completeProfile, login, me, verifyemail } from "./service/login.service.js"
+import { changePassword, changePasswordemail, completeProfile, login, me, resendverifyemail, verifyemail } from "./service/login.service.js"
 import { upload   } from "../../utlis/multer/cloud.multer.js";
 import { middlewere } from "../../middlewere/middlewere.js";
 import passport from "./service/google.service.js";
@@ -22,11 +22,17 @@ router.put(
   changePassword
 );
 router.post(
+  "/resendverifyemail",
+
+  resendverifyemail
+);
+  
+router.post(
   "/changePasswordemail",
 
   changePasswordemail
 );
-  
+
 router.put(
   "/complete-profile",
   upload  .fields([

@@ -19,6 +19,7 @@ import projectreviwe from "../../../DB/models/projectreviwe.js";
 import reportModel from "../../../DB/models/report.js";
 import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
 import { sendemail } from "../../../utlis/email/sendemail.js";
+import { acceptedEmail } from "../../../utlis/temblete/vervication.email.js";
 
 //تسجيل الدخول
 
@@ -317,8 +318,7 @@ export const acceptProposal = asyncHandelr(async (req, res, next) => {
 
   const { proposalId } = req.params;
   const userId = req.user._id;
-
-  const ProposalData = await proposal.findById(proposalId).populate("developertaked", "notificationSettings");
+  const ProposalData = await proposal.findById(proposalId).populate("developer", "notificationSettings username email");
 
   if (!ProposalData)
     return next(new Error("العرض غير موجود", { cause: 404 }));
@@ -380,18 +380,27 @@ if (acceptedProposal) {
       developer: ProposalData.developer,
     });
   }
-  if(ProposalData.notificationSettings.projects == true){
+  if(ProposalData.developer.notificationSettings.projects == true){
   await createNotification({
     receiver:  ProposalData.developer,
     sender: userId,
     type: "project",
     title: "لقد تم قبول عرضك",
     body: ProposalData.coverLetter,
-    project: projectId,
+    project: ProposalData.project,
 });}
+
+ await sendemail({
+  to: ProposalData.developer.email,
+  subject: "🎉 تم قبول العرض",
+  html: acceptedEmail({
+    developerName: ProposalData.developer.username,
+    projectUrl: "https://progzila.com/dashboard/developer/projects",
+  }),
+});
   return successresponse(res, "تم قبول العرض", 200, {
     proposal: ProposalData,
-    chatId: chat._id,
+    chatId: chats._id,
   });
 
 });
@@ -402,7 +411,7 @@ export const rejectProposal = asyncHandelr(async (req, res, next) => {
   const { proposalId } = req.params;
   const userId = req.user._id;
 
-  const ProposalData = await proposal.findById(proposalId).populate("developertaked", "notificationSettings");
+  const ProposalData = await proposal.findById(proposalId).populate("developer", "notificationSettings");
 
   if (!ProposalData)
     return next(new Error("العرض غير موجود", { cause: 404 }));
@@ -421,14 +430,14 @@ export const rejectProposal = asyncHandelr(async (req, res, next) => {
   ProposalData.status = "rejected";
 
   await ProposalData.save();
-  if(ProposalData.notificationSettings.projects == true){
+  if(ProposalData.developer.notificationSettings.projects == true){
   await createNotification({
     receiver: ProposalData.developer,
     sender: userId,
     type: "project",
     title: "لقد تم رفض عرضك",
     body: ProposalData.coverLetter,
-    project: projectId,
+    project: ProposalData.project,
 });}
   return successresponse(res, "تم رفض العرض", 200, ProposalData);
 

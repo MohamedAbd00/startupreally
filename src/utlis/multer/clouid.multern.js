@@ -64,8 +64,12 @@ const projectValidationTypes = [
   // ZIP
   "application/zip",
   "application/x-zip-compressed",
+    "application/vnd.rar",
+  "application/x-rar-compressed",
   "application/octet-stream",
+
 ];
+
 // =======================
 // Store Project Upload
 // =======================

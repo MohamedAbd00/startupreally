@@ -306,6 +306,11 @@ notificationSettings: {
     type: Boolean,
     default: true,
   },
+
+    isTeam: {
+    type: Boolean,
+    default: false,
+  },
    newReviews: {
     type: Boolean,
     default: true,

@@ -490,7 +490,7 @@ typewallet: type
     amount
   },
 });
-if(project.notificationSettings.payments == true){
+if(project.developertaked.notificationSettings.payments == true){
   await createNotification({
     receiver:project.developertaked ,
     sender:userId ,

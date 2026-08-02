@@ -726,7 +726,7 @@ if (previousProjectCount < 3) {
   await createNotification({
     receiver: project.owner,
     sender: developer,
-    type: "project",
+    type: "proposal",
     title: "لقد قدم علي مشروعك",
     body: project.coverLetter,
     project: projectId,
@@ -933,7 +933,9 @@ console.log(projectId)
 //اضافة مهمة 
 export const createTask = asyncHandelr(async (req, res, next) => {
   const userId = req.user._id;
-
+if(req.user.plan != "vip"){
+      return next(new Error("الرجاء ترقية اشتراكك كي تستطيع العمل علي المشروع", { cause: 404 }));
+}
   const { projectId, title, description, dueDate } = req.body;
 
   const project = await Projects.findById(projectId).populate("owner", "notificationSettings");
@@ -966,7 +968,7 @@ await createProjectActivity({
     taskTitle: task.title,
   },
 });
-if(project.notificationSettings.tasks == true){
+if(project.owner.notificationSettings.tasks == true){
   await createNotification({
     receiver: project.owner,
     sender:userId ,
@@ -1008,7 +1010,9 @@ export const getProjectTasks = asyncHandelr(async (req, res, next) => {
 //تعديل حالة المهام
 export const updateTaskStatus = asyncHandelr(async (req, res, next) => {
   const userId = req.user._id;
-
+if(req.user.plan != "vip"){
+      return next(new Error("الرجاء ترقية اشتراكك كي تستطيع العمل علي المشروع", { cause: 404 }));
+}
   const { taskId } = req.params;
 
   const { status } = req.body;
@@ -1083,10 +1087,16 @@ await createProjectActivity({
 });
 //اضافة عضو في فريق التطوير
 export const addMember = asyncHandelr(async (req, res, next) => {
+    const userId = req.user._id;
+if(req.user.plan != "vip"){
+      return next(new Error("الرجاء ترقية اشتراكك كي تستطيع العمل علي المشروع", { cause: 404 }));
+}
   const { projectId, role, email } = req.body;
-
-  const project = await Projects.findById(projectId).populate("owner", "notificationSettings");
-
+if(req.user.email == email){
+      return next(new Error("لا يمكن اضافة نفسك", { cause: 404 }));
+}
+  const project = await Projects.findById(projectId);
+console.log(email)
   if (!project) {
     return next(new Error("المشروع غير موجود", { cause: 404 }));
   }
@@ -1133,9 +1143,9 @@ await createProjectActivity({
   },
 });
   await project.save();
-if(project.notificationSettings.projects == true){
+if(member.notificationSettings.projects == true){
   await createNotification({
-    receiver: project.owner,
+    receiver: member._id,
     sender:userId ,
     type: "projects",
     title: "لقد تم اضافة عضو جديد في فريق العمل",
@@ -1352,16 +1362,21 @@ if (project.clientApproved) {
 export const uploadProjectFil = asyncHandelr(async (req, res, next) => {
   const userId = req.user._id;
   const { projectId, folderId } = req.params;
+
   const project = await Projects.findById(projectId);
   const folder = await FolderModel.findOne({
     _id: folderId,
     project: projectId,
   });
- if (project.clientApproved) {
+
+  if (project.clientApproved) {
     return next(
-      new Error("تم الانتهاء من المشروع لايمكنك التعديل", { cause: 404 })
+      new Error("تم الانتهاء من المشروع لايمكنك التعديل", {
+        cause: 404,
+      })
     );
   }
+
   if (!folder) {
     return next(new Error("الفولدر غير موجود", { cause: 404 }));
   }
@@ -1377,20 +1392,6 @@ export const uploadProjectFil = asyncHandelr(async (req, res, next) => {
     const fileName = Buffer.from(file.originalname, "latin1").toString("utf8");
 
     const extension = fileName.split(".").pop().toLowerCase();
-    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-
-    const base64 = `data:${file.mimetype};base64,${file.buffer.toString(
-      "base64"
-    )}`;
-
-    const result = await cloudinary.uploader.upload(base64, {
-      folder: `projects/${projectId}/${folderId}`,
-      resource_type: "raw",
-      public_id: fileNameWithoutExt,
-      use_filename: true,
-      unique_filename: true,
-      overwrite: false,
-    });
 
     let type = "";
 
@@ -1413,21 +1414,24 @@ export const uploadProjectFil = asyncHandelr(async (req, res, next) => {
         return next(new Error("نوع الملف غير مدعوم", { cause: 400 }));
     }
 
-    const fileUrl = `${result.secure_url}.${extension}`;
+    const result = await uploadToR2(file, {
+      folder: `projects/${projectId}/${folderId}`,
+      fileName: `projects/${projectId}/${folderId}/${fileName}`,
+      download: true,
+    });
 
     const newFile = await ProjectFiles.create({
       project: projectId,
       folder: folderId,
       fileName,
-      url: fileUrl,
-      public_id: result.public_id,
+      url: result.secure_url,
+      public_id: result.key,
       size: file.size,
       extension,
       type,
       uploadedBy: userId,
     });
 
-    // تسجيل النشاط
     await createProjectActivity({
       project: projectId,
       user: userId,

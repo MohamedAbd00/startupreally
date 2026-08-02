@@ -67,7 +67,7 @@ const projectActivitySchema = new Schema(
         "message",
         "feature",
          "Objective",
-        
+        "task",
     "payment",
       ],
       required: true,

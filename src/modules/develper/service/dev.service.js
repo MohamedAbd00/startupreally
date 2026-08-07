@@ -25,8 +25,10 @@ import Tasks from "../../../DB/models/Tasks.js";
 import StoreView from "../../../DB/models/ProductViews.js";
 import projectreviwe from "../../../DB/models/projectreviwe.js";
 import previousprojects from "../../../DB/models/previousprojects.js"
-
-//استكمال البيانات
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuid } from "uuid";
+import { r2 } from "../../../utlis/multer/cloudflare.js";//استكمال البيانات
 export const updateprofiledev = asyncHandelr(async (req, res, next) => {
   const id = req.user?._id;
 
@@ -290,16 +292,19 @@ export const createProject = asyncHandelr(async (req, res, next) => {
       })
     );
   }
-const projectCount = await storeModel.countDocuments({
-   owner
-})
-if (req.user.plan === "free" && projectCount >= 3) {
-  return next(
-    new Error("الرجاء ترقية الخطة لنشر المزيد من المشاريع", {
-      cause: 403,
-    })
-  );
-}
+
+  const projectCount = await storeModel.countDocuments({
+    owner,
+  });
+
+  if (req.user.plan === "free" && projectCount >= 3) {
+    return next(
+      new Error("الرجاء ترقية الخطة لنشر المزيد من المشاريع", {
+        cause: 403,
+      })
+    );
+  }
+
   const {
     projectName,
     category,
@@ -311,6 +316,7 @@ if (req.user.plan === "free" && projectCount >= 3) {
     technologies,
     mainFeatures,
     videoUrl,
+    downloadurl,
     basic,
     pro,
     enterprise,
@@ -334,7 +340,7 @@ if (req.user.plan === "free" && projectCount >= 3) {
   }
 
   // ==========================
-  // Upload Images
+  // Upload Images فقط
   // ==========================
 
   const images = [];
@@ -351,31 +357,11 @@ if (req.user.plan === "free" && projectCount >= 3) {
   }
 
   // ==========================
-  // Upload Video
+  // الفيديو والملف تم رفعهما مسبقًا إلى R2
   // ==========================
 
-  let uploadedVideoUrl = videoUrl || "";
-
-  if (req.files?.video?.length) {
- const result = await uploadToR2(req.files.video[0], {
-  folder: "projects/videos",
-});
-
-uploadedVideoUrl = result.secure_url;
-  }
-
-  // Upload ZIP
-
-let downloadurl = "";
-
-if (req.files?.downloadurl?.length) {
-   const result = await uploadToR2(req.files.downloadurl[0], {
-    folder: "projects/files",
-    download: true,
-  });
-
-  downloadurl = result.secure_url;
-}
+  const uploadedVideoUrl = videoUrl || "";
+  const uploadedDownloadUrl = downloadurl || "";
 
   // ==========================
   // Create Project
@@ -383,14 +369,19 @@ if (req.files?.downloadurl?.length) {
 
   const project = await storeModel.create({
     owner,
+
     projectName,
-    downloadurl,
     category,
     shortDescription,
     fullDescription,
+
     demoUrl,
     githubUrl,
+
     license,
+
+    downloadurl: uploadedDownloadUrl,
+    videoUrl: uploadedVideoUrl,
 
     technologies:
       typeof technologies === "string"
@@ -401,8 +392,6 @@ if (req.files?.downloadurl?.length) {
       typeof mainFeatures === "string"
         ? JSON.parse(mainFeatures)
         : mainFeatures,
-
-    videoUrl: uploadedVideoUrl,
 
     basic:
       typeof basic === "string"
@@ -421,6 +410,7 @@ if (req.files?.downloadurl?.length) {
 
     supportPeriod,
     updatesPeriod,
+
     images,
   });
 
@@ -3036,11 +3026,7 @@ export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
     videoUrl,
   } = req.body;
 
-  if (
-    !projectName ||
-    !category ||
-    !shortDescription 
-  ) {
+  if (!projectName || !category || !shortDescription) {
     return next(
       new Error("جميع الحقول المطلوبة يجب إدخالها", {
         cause: 400,
@@ -3049,7 +3035,7 @@ export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
   }
 
   // ==========================
-  // Upload Images
+  // Upload Images فقط
   // ==========================
 
   const images = [];
@@ -3066,20 +3052,6 @@ export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
   }
 
   // ==========================
-  // Upload Video
-  // ==========================
-
-  let uploadedVideoUrl = videoUrl || "";
-
-  if (req.files?.video?.length) {
-    const result = await uploadToCloudinary(req.files.video[0], {
-      folder: "projects/videos",
-      resource_type: "video",
-    });
-
-    uploadedVideoUrl = result.secure_url;
-  }
-  // ==========================
   // Create Project
   // ==========================
 
@@ -3091,7 +3063,6 @@ export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
     fullDescription,
     demoUrl,
     githubUrl,
-  
 
     technologies:
       typeof technologies === "string"
@@ -3103,7 +3074,8 @@ export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
         ? JSON.parse(mainFeatures)
         : mainFeatures,
 
-    videoUrl: uploadedVideoUrl,
+    // الفيديو أصبح رابط فقط
+    videoUrl: videoUrl || "",
 
     images,
   });
@@ -3213,4 +3185,33 @@ export const deletepreviousprojects = asyncHandelr(async (req, res, next) => {
     "تم حذف المشروع بنجاح",
     200
   );
+});
+
+
+export const generateProjectFileUploadUrl = asyncHandelr(async (req, res) => {
+
+    const { fileName, contentType } = req.body;
+
+    const key = `projects/files/${uuid()}-${fileName}`;
+
+    const command = new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: key,
+        ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(r2, command, {
+        expiresIn: 600,
+    });
+
+    return res.json({
+
+        uploadUrl,
+
+        fileUrl: `${process.env.R2_PUBLIC_URL}/${key}`,
+
+        key
+
+    });
+
 });

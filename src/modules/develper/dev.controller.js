@@ -1,10 +1,10 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { addMember,  addpreviousprojects,  createFolder, createProject, createProposal, createTask, deleteAccount, deleteFolder, deletepreviousprojects, deleteProject, deleteProjectFile, deleteTask, getallprojects, getDeveloperDashboard, getDeveloperEarnings, GetDeveloperProjects, getFolderFiles, getMyProposals, getOpenProjects, getpreviousprojects, getProjectActivity, getProjectFolders, getProjectMembers, getProjectRoom, getProjectTasks, removeMember, requestwithdraw, updateAccountSettings, updateNotificationSettings, updateprofiledev, updateProject, updateProjectLinks, updatestate, updateTaskStatus, uploadProjectFil } from "./service/dev.service.js";
+import { addMember,  addpreviousprojects,  createFolder, createProject, createProposal, createTask, deleteAccount, deleteFolder, deletepreviousprojects, deleteProject, deleteProjectFile, deleteTask, generateProjectFileUploadUrl, getallprojects, getDeveloperDashboard, getDeveloperEarnings, GetDeveloperProjects, getFolderFiles, getMyProposals, getOpenProjects, getpreviousprojects, getProjectActivity, getProjectFolders, getProjectMembers, getProjectRoom, getProjectTasks, removeMember, requestwithdraw, updateAccountSettings, updateNotificationSettings, updateprofiledev, updateProject, updateProjectLinks, updatestate, updateTaskStatus, uploadProjectFil } from "./service/dev.service.js";
 import { upload, uploadProjectFiles   } from "../../utlis/multer/cloud.multer.js";
 import {  uploadStoreProject   } from "../../utlis/multer/clouid.multern.js";
-
+import { getVideoUploadUrl } from "./service/r2.service.js";
 const router = Router()
 //تحديث بيانات المبرمج
 router.put(
@@ -15,6 +15,11 @@ upload  .fields([
     { name: "coverImage", maxCount: 1 },
   ]),
   updateprofiledev
+);
+router.post(
+  "/video-upload-url",
+  middlewere(),
+  getVideoUploadUrl
 );
 //جلب حميع المشاريع
 router.get(
@@ -32,16 +37,13 @@ router.post(
       name: "images",
       maxCount: 10,
     },
-    {
-      name: "video",
-      maxCount: 1,
-    },
-    {
-      name: "downloadurl",
-      maxCount: 1,
-    },
   ]),
   createProject
+);
+router.post(
+  "/project-file-upload-url",
+  middlewere(),
+  generateProjectFileUploadUrl
 );
 //تحديث حالة النشر
 router.put(
@@ -194,7 +196,7 @@ router.get(
 router.get('/getDeveloperDashboard',   middlewere(), getDeveloperDashboard);
 //طلب سحب
 router.post('/requestwithdraw',   middlewere(), requestwithdraw);
-//اضافة اهمال سابقة
+//اضافة اعمال سابقة
 router.post(
   "/addpreviousprojects",
   middlewere(),
@@ -202,10 +204,6 @@ router.post(
     {
       name: "images",
       maxCount: 10,
-    },
-    {
-      name: "video",
-      maxCount: 1,
     },
    
   ]),

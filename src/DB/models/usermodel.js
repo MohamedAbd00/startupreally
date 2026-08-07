@@ -44,7 +44,7 @@ lastSeen: {
     phone: {
         type: String,
         trim: true,
-        unique: true,
+        
         sparse: true
     },
 

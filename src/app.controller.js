@@ -7,6 +7,7 @@ import clientcontroller from "./modules/client/client.controller.js";
 import devcontroller from "./modules/develper/dev.controller.js";
 import chatcontroller from "./socket/chat.controller.js";
 import notcontroller from "./notification/notification.controller.js";
+import admincontroller from "./modules/admin/admin.controller.js";
 
 const bootstrap = (app) => {
 
@@ -14,11 +15,11 @@ app.use(express.json({ limit: "500mb" }));
 app.use(express.urlencoded({ extended: true, limit: "500mb" }));
 
 app.use(cors({
- // origin: "https://progzila.com",
+ origin: "https://progzila.com",
 
    
 
- origin: "http://localhost:5173",
+ //origin: "http://localhost:5173",
 
   credentials: true
 }));
@@ -28,6 +29,9 @@ app.use("/dev", devcontroller);
 app.use("/auth", authcontroller);
 app.use("/chat", chatcontroller);
 app.use("/notification", notcontroller);
+app.use("/admin", admincontroller);
+
+
 app.use(globalerror);
 };
 

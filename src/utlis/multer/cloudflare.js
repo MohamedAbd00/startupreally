@@ -1,4 +1,8 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
 import { v4 as uuid } from "uuid";
 import mime from "mime-types";
@@ -11,6 +15,10 @@ export const r2 = new S3Client({
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
   },
 });
+
+// ============================================
+// Upload مباشرة إلى R2 (السيرفر)
+// ============================================
 
 export const uploadToR2 = async (
   file,
@@ -30,6 +38,7 @@ export const uploadToR2 = async (
 
   let body;
 
+  // لو الملف في الذاكرة
   if (file.buffer) {
     body = file.buffer;
   } else {
@@ -37,7 +46,8 @@ export const uploadToR2 = async (
       throw new Error(`الملف غير موجود: ${file.path}`);
     }
 
-    body = fs.readFileSync(file.path);
+    // ✅ استخدام Stream بدلاً من قراءة الملف بالكامل في الرام
+    body = fs.createReadStream(file.path);
   }
 
   const params = {
@@ -47,7 +57,6 @@ export const uploadToR2 = async (
     ContentType: file.mimetype,
   };
 
-  // ملفات التحميل فقط
   if (download) {
     params.ContentDisposition = `attachment; filename*=UTF-8''${encodeURIComponent(
       file.originalname
@@ -55,7 +64,9 @@ export const uploadToR2 = async (
   }
 
   try {
-    const result = await r2.send(new PutObjectCommand(params));
+    const result = await r2.send(
+      new PutObjectCommand(params)
+    );
 
     return {
       url: `${process.env.R2_PUBLIC_URL}/${key}`,
@@ -74,4 +85,35 @@ export const uploadToR2 = async (
       fs.unlinkSync(file.path);
     }
   }
+};
+
+// ============================================
+// إنشاء Presigned URL للرفع المباشر من React
+// ============================================
+
+export const generateVideoUploadUrl = async ({
+  fileName,
+  contentType,
+}) => {
+  const extension =
+    mime.extension(contentType) ||
+    fileName.split(".").pop();
+
+  const key = `projects/videos/${uuid()}.${extension}`;
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    ContentType: contentType,
+  });
+
+  const uploadUrl = await getSignedUrl(r2, command, {
+    expiresIn: 60 * 10, // 10 دقائق
+  });
+
+  return {
+    uploadUrl,
+    key,
+    videoUrl: `${process.env.R2_PUBLIC_URL}/${key}`,
+  };
 };

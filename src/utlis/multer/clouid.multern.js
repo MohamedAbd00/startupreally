@@ -12,7 +12,60 @@ cloudinary.config({
 // =======================
 // Create uploads folder
 // =======================
+// ============================================
+// استخراج Public ID من Cloudinary URL
+// ============================================
 
+export const getCloudinaryPublicId = (url) => {
+
+  try {
+
+    const parsedUrl =
+      new URL(url);
+
+    const parts =
+      parsedUrl.pathname.split("/");
+
+    const uploadIndex =
+      parts.indexOf("upload");
+
+    if (uploadIndex === -1) {
+      return null;
+    }
+
+    let publicIdParts =
+      parts.slice(uploadIndex + 1);
+
+    // إزالة v123456789
+    if (
+      publicIdParts[0] &&
+      /^v\d+$/.test(publicIdParts[0])
+    ) {
+      publicIdParts.shift();
+    }
+
+    let publicId =
+      publicIdParts.join("/");
+
+    // إزالة extension
+    publicId =
+      publicId.replace(
+        /\.[^/.]+$/,
+        ""
+      );
+
+    return publicId;
+
+  } catch (error) {
+
+    console.error(
+      "Cloudinary URL Error:",
+      error
+    );
+
+    return null;
+  }
+};
 const uploadDir = "uploads";
 
 if (!fs.existsSync(uploadDir)) {

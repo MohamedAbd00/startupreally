@@ -10,6 +10,7 @@ export const createNotification = async ({
   body,
   project = null,
   chat = null,
+  link = "",
   metadata = {},
 }) => {
   try {
@@ -25,16 +26,17 @@ export const createNotification = async ({
     }
 
     // إنشاء الإشعار
-    const notification = await Notification.create({
-      receiver: receiverId,
-      sender,
-      type,
-      title,
-      body,
-      project,
-      chat,
-      metadata,
-    });
+  const notification = await Notification.create({
+  receiver: receiverId,
+  sender,
+  type,
+  title,
+  body,
+  project,
+  chat,
+  link,
+  metadata,
+});
 
     // Populate
     await notification.populate([

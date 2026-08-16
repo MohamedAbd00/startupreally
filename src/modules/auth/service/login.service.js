@@ -4,9 +4,11 @@ import { comparehash, generatehash } from "../../../utlis/security/hash.security
 import Usermodel from "../../../DB/models/usermodel.js";
 import {generateCode } from "../../../utlis/security/Token.security.js";
 import { sendemail, sendpassword } from "../../../utlis/email/sendemail.js";
-import { devtoken, generatetoken, clienttoken } from "../../../utlis/security/Token.security.js";
+import { devtoken, generatetoken, clienttoken , admintoken } from "../../../utlis/security/Token.security.js";
 import { v2 as cloudinary } from 'cloudinary';
 import passport from "../service/google.service.js"; // المسار حسب مشروعك
+import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
+import { logadminActivity } from "../../../utlis/activity/adminactivity.js";
 //تسجيل الدخول
 export const login = asyncHandelr(async(req , res , next)=>{
     const {email , password} = req.body
@@ -51,6 +53,10 @@ export const login = asyncHandelr(async(req , res , next)=>{
          const tokens = generatetoken({
         payload:{id: users._id}
     })
+    await logUserActivity({
+  userId: users._id,
+  type: "login",
+});
       console.log("client")
        return successresponse(
         res,
@@ -327,3 +333,58 @@ await sendpassword({
     message: "✅ تم تغيير كلمة السر بنجاح",
   });
 });
+
+//تسجبل الدخول للادمن 
+export const loginadmin = asyncHandelr(async(req , res , next)=>{
+    const {email , password} = req.body
+    if(!email || !password){
+         return next(new Error("جميع الحقول مطلوبة", { cause: 400 }));
+    }
+
+    const users = await Usermodel.findOne({email})
+
+
+if (users.userType !== "admin") {
+    return next(new Error("انت لست admin", { cause: 403 }));
+}
+    if(!users){
+         return next(new Error("الايميل غير موجود", { cause: 400 }));
+    }
+    if (users.isBlocked == true) {
+        return next(new Error("الايميل محظور تواصل مع الدعم", { cause: 400 }));
+    }
+    if(users.deleted == true){
+              return next(new Error("لقد تم حذف الحساب", { cause: 400 }));
+    }
+    
+     const ismatch = await comparehash({
+        planText: password ,
+        valuehash: users.password
+    })
+  
+
+    if(!ismatch){
+      return next(new Error("كلمة السر غير صحيحة", { cause: 400 }));
+    }
+
+   
+    
+         const tokens = admintoken({
+        payload:{id: users._id}
+    })
+   await logadminActivity({
+  userId: users._id,
+  action: "تسجيل دخول",
+  type: "login",
+  metadata: {
+    ip: users.accses === "SuperAdmin"? "الادمن لا يتم اخذ موقعه" : req.ip,
+  },
+});
+       return successresponse(
+        res,
+        "تم تسجيل الدخول بنجاح",
+        200,
+      {token: tokens}
+    );
+    
+  })

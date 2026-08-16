@@ -29,6 +29,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 import { r2 } from "../../../utlis/multer/cloudflare.js";//استكمال البيانات
+import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
 export const updateprofiledev = asyncHandelr(async (req, res, next) => {
   const id = req.user?._id;
 
@@ -413,7 +414,13 @@ export const createProject = asyncHandelr(async (req, res, next) => {
 
     images,
   });
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "project_created",
+  metadata: {
+    projectId: project._id,
+  },
+});
   return successresponse(
     res,
     "تم إنشاء المشروع بنجاح",
@@ -469,7 +476,13 @@ export const updatestate = asyncHandelr(async (req, res, next) => {
       new: true,
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "project_updated",
+  metadata: {
+    projectId: project._id,
+  },
+});
   return successresponse(
     res,
     "تم تغيير حالة المشروع بنجاح",
@@ -516,7 +529,14 @@ export const deleteProject = asyncHandelr(async (req, res, next) => {
 
   // حذف المشروع
   await project.deleteOne();
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "project_deleted",
+  metadata: {
+    projectId: project._id,
+  },
+});
+  
   return successresponse(
     res,
     "تم حذف المشروع بنجاح",
@@ -721,7 +741,13 @@ if (previousProjectCount < 3) {
     body: project.coverLetter,
     project: projectId,
 });
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "project_updated",
+  metadata: {
+    projectId: project._id,
+  },
+});
   return successresponse(
     res,
     "تم إرسال العرض بنجاح",
@@ -1704,7 +1730,11 @@ export const updateAccountSettings = asyncHandelr(async (req, res) => {
       runValidators: true,
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "profile_updated",
+ 
+});
   return successresponse(
     res,
     "تم تحديث البيانات",
@@ -1731,7 +1761,11 @@ export const updateNotificationSettings = asyncHandelr(async (req, res) => {
       new: true,
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "profile_updated",
+ 
+});
   return successresponse(
     res,
     "تم تحديث إعدادات الإشعارات",
@@ -1749,7 +1783,11 @@ export const deleteAccount = asyncHandelr(async (req, res) => {
       deletedAt: new Date(),
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "user_deleted",
+ 
+});
   return successresponse(
     res,
     "تم حذف الحساب",
@@ -2990,7 +3028,15 @@ export const requestwithdraw = asyncHandelr(async (req, res, next) => {
         status: "pending",
         phone
     });
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "payment_Withdraw",
+  metadata: {
+    paymentId: withdraw._id,
+    amount: amount,
+    type: method,
+  },
+});
     return successresponse(
         res,
         "تم إنشاء طلب السحب بنجاح",
@@ -3079,7 +3125,13 @@ export const addpreviousprojects = asyncHandelr(async (req, res, next) => {
 
     images,
   });
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "previousprojects_created",
+  metadata: {
+    projectId: project._id,
+  },
+});
   return successresponse(
     res,
     "تم إنشاء المشروع بنجاح",
@@ -3179,7 +3231,13 @@ export const deletepreviousprojects = asyncHandelr(async (req, res, next) => {
   // ==========================
 
   await project.deleteOne();
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "previousprojects_deleted",
+  metadata: {
+    projectId: project._id,
+  },
+});
   return successresponse(
     res,
     "تم حذف المشروع بنجاح",

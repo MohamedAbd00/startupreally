@@ -51,6 +51,13 @@ amount: {
             required: true,
 
     },
+     typepayment: {
+      type: String,
+      enum: ["project", "Subscription"],
+    
+            required: true,
+
+    },
 
    
   },

@@ -1,12 +1,54 @@
 import {
   S3Client,
   PutObjectCommand,
+   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
 import { v4 as uuid } from "uuid";
 import mime from "mime-types";
+// ============================================
+// حذف ملف من R2
+// ============================================
+export const getR2Key = (url) => {
+  if (!url) return null;
 
+  try {
+    const publicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+
+    if (publicUrl && url.startsWith(publicUrl)) {
+      return url
+        .replace(`${publicUrl}/`, "")
+        .split("?")[0];
+    }
+
+    return new URL(url).pathname
+      .replace(/^\/+/, "")
+      .split("?")[0];
+  } catch (error) {
+    console.error("R2 URL Parse Error:", error);
+    return null;
+  }
+};
+export const deleteFromR2 = async (key) => {
+  if (!key) {
+    return;
+  }
+
+  try {
+    await r2.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: key,
+      })
+    );
+
+    console.log("✅ تم حذف الملف من R2:", key);
+  } catch (error) {
+    console.error("❌ R2 Delete Error:", error);
+    throw error;
+  }
+};
 export const r2 = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,

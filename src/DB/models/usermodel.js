@@ -67,7 +67,7 @@ lastSeen: {
 
     plan: {
         type: String,
-        enum: ["free", "basic", "vip"],
+        enum: ["free", "vip"],
         default: "free"
     },
 
@@ -106,9 +106,12 @@ compleytprofile: {
     // 👨‍💻 بيانات المبرمج
     userType: {
         type: String,
-        enum: ["developer", "client"]
+        enum: ["developer", "client", "admin"]
     },
-
+accses:{
+      type: String,
+        enum: ["SuperAdmin", "FinanceAdmin", "ContentAdmin","SupportAdmin"]
+},
     track: {
         type: String,
        

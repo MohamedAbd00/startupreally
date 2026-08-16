@@ -4,7 +4,7 @@ const withdrawSchema = new Schema(
   {
     developer: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Users",
       required: true,
     },
 

@@ -45,10 +45,11 @@ reviewsCount: {
       trim: true,
     },
     //منشور
-   public: {
-        type: Boolean,
-        default: true
-    },
+  public: {
+    type: String,
+    enum: ["public", "private", "suspended"],
+    default: "public"
+},
     // التصنيف
     category: {
       type: String,

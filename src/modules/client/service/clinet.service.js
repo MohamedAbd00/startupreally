@@ -20,6 +20,8 @@ import reportModel from "../../../DB/models/report.js";
 import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
 import { sendemail } from "../../../utlis/email/sendemail.js";
 import { acceptedEmail } from "../../../utlis/temblete/vervication.email.js";
+import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
+import { createPaymentRequest, createPaymentRequestService } from "../../payment/service/payment.service.js";
 
 //تسجيل الدخول
 
@@ -226,6 +228,14 @@ setImmediate(async () => {
     console.error("Email Error:", err);
   }
 });
+
+await logUserActivity({
+  userId: req.user._id,
+  type: "projectclient_created",
+  metadata: {
+    projectId: ptoject._id,
+  },
+});
   return successresponse(
     res,
     "تم انشاء المشروع  بنجاح",
@@ -318,7 +328,7 @@ export const acceptProposal = asyncHandelr(async (req, res, next) => {
 
   const { proposalId } = req.params;
   const userId = req.user._id;
-  const ProposalData = await proposal.findById(proposalId).populate("developer", "notificationSettings username email");
+  const ProposalData = await proposal.findById(proposalId).populate("developer", "_id notificationSettings username email");
 
   if (!ProposalData)
     return next(new Error("العرض غير موجود", { cause: 404 }));
@@ -398,6 +408,13 @@ if (acceptedProposal) {
     projectUrl: "https://progzila.com/dashboard/developer/projects",
   }),
 });
+await logUserActivity({
+  userId: req.user._id,
+  type: "approved_proposal",
+  metadata: {
+    user: ProposalData.developer._id,
+  },
+});
   return successresponse(res, "تم قبول العرض", 200, {
     proposal: ProposalData,
     chatId: chats._id,
@@ -411,7 +428,7 @@ export const rejectProposal = asyncHandelr(async (req, res, next) => {
   const { proposalId } = req.params;
   const userId = req.user._id;
 
-  const ProposalData = await proposal.findById(proposalId).populate("developer", "notificationSettings");
+  const ProposalData = await proposal.findById(proposalId).populate("developer", "notificationSettings _id");
 
   if (!ProposalData)
     return next(new Error("العرض غير موجود", { cause: 404 }));
@@ -439,6 +456,13 @@ export const rejectProposal = asyncHandelr(async (req, res, next) => {
     body: ProposalData.coverLetter,
     project: ProposalData.project,
 });}
+await logUserActivity({
+  userId: req.user._id,
+  type: "Rejected_proposal",
+  metadata: {
+    user: ProposalData.developer._id,
+  },
+});
   return successresponse(res, "تم رفض العرض", 200, ProposalData);
 
 });
@@ -498,6 +522,15 @@ if(project.developertaked.notificationSettings.payments == true){
     title: "لقد تم اضافة دفعة جديدة وهي الان تحت المراجعة",
     body: amount,
     project: projectid,
+});
+await logUserActivity({
+  userId: req.user._id,
+  type: "payment_completed",
+  metadata: {
+    paymentId: donePayment._id,
+    amount: amount,
+    type: type,
+  },
 });
 }
   return successresponse(res, "تم ارسال طلب الدفع", 200);
@@ -653,6 +686,13 @@ if(project.developertaked.notificationSettings.projects == true){
     body: "المشروع منتهي",
     project: projectId,
 });}
+await logUserActivity({
+  userId: req.user._id,
+  type: "project_completed",
+  metadata: {
+    projectId: project._id,
+  },
+});
   return successresponse(
     res,
     "تم الموافقة علي المشروع",
@@ -919,7 +959,7 @@ const alldev = await Usermodel.find({
 export const getstore = asyncHandelr(async (req, res, next) => {
 
 
-const stors = await storeModel.find({public : true}).populate("owner", "username profileImage");
+const stors = await storeModel.find({public : "public"}).populate("owner", "username profileImage");
   return successresponse(
     res,
     "تم جلب المتجر بنجاح",
@@ -975,7 +1015,11 @@ export const updateAccountSettings = asyncHandelr(async (req, res, next) => {
       runValidators: true,
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "profile_updated",
+ 
+});
   return successresponse(
     res,
     "تم تحديث البيانات",
@@ -1001,7 +1045,11 @@ export const updateNotificationSettings = asyncHandelr(async (req, res, next) =>
       new: true,
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "profile_updated",
+ 
+});
   return successresponse(
     res,
     "تم تحديث إعدادات الإشعارات",
@@ -1019,7 +1067,11 @@ export const deleteAccount = asyncHandelr(async (req, res, next) => {
       deletedAt: new Date(),
     }
   );
-
+await logUserActivity({
+  userId: req.user._id,
+  type: "user_deleted",
+ 
+});
   return successresponse(
     res,
     "تم حذف الحساب",
@@ -1088,13 +1140,30 @@ const done = await Order.create({
 package : type,
  amount
 })
+const io = req.app.get("io");
 
+await createPaymentRequestService({
+  userId: req.user._id,
+  orderId: done._id,
+  type: done.typewallet,
+  amount: done.amount,
+  senderPhone: done.phone,
+  io,
+});
 await storeModel.findByIdAndUpdate(
   projectid,
   {
     $inc: { salesCount: 1 },
   }
 );
+
+await logUserActivity({
+  userId: req.user._id,
+  type: "project_buy",
+  metadata: {
+    projectId: projectid,
+  },
+});
   return successresponse(
     res,
     "تم تفديم طلب الشراء بنجاح",
@@ -1281,7 +1350,13 @@ if (found) {
       client: userId,
       developer: Project.owner,
     });
-  
+  await logUserActivity({
+  userId: req.user._id,
+  type: "chat_support_client",
+  metadata: {
+    projectId: storeproject,
+  },
+});
   return successresponse(res, "تم انشاء شات الدعم", 200, 
 
     {chats}
@@ -1415,7 +1490,11 @@ export const addreport = asyncHandelr(async (req, res, next) => {
    
     images,
   });
-
+ await logUserActivity({
+  userId: req.user._id,
+  type: "add_report",
+ 
+});
   return successresponse(
     res,
     "تم ارسال بلاغك بنجاح",

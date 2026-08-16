@@ -5,6 +5,9 @@ import Chats from "../../DB/models/chat.js";
 import Messages from "../../DB/models/massege.js";
 import { createNotification } from "../../utlis/activity/createNotification.js";
 import chatsupport from "../../DB/models/chatsupport.js";
+import {
+  verifyPaymentAppToken,
+} from "../../utlis/security/Token.security.js";
 const onlineUsers = new Map();
 const extractId = (data, key = "userId") => {
   if (!data) return null;
@@ -28,6 +31,248 @@ export const socketConnection = () => {
   io.on("connection", (socket) => {
     console.log("✅ Connected:", socket.id);
 
+
+// =====================================================
+// PAYMENT / FINANCE SOCKET AUTHENTICATION
+// =====================================================
+
+const paymentToken =
+  socket.handshake.auth?.paymentToken;
+
+const adminToken =
+  socket.handshake.auth?.token;
+
+
+// =====================================================
+// PAYMENT APP
+// =====================================================
+
+if (paymentToken) {
+
+  try {
+
+    const decoded =
+      verifyPaymentAppToken(
+        paymentToken
+      );
+
+
+    if (
+      decoded.type ===
+      "payment-app"
+    ) {
+
+      socket.paymentApp = true;
+
+      socket.paymentDeviceId =
+        decoded.deviceId;
+
+
+      // ===============================================
+      // PAYMENT APP -> FINANCE ROOM
+      // ===============================================
+
+      socket.join(
+        "finance-mobile"
+      );
+
+
+      console.log(
+        `💰 Payment App Joined finance-mobile: ${decoded.deviceId}`
+      );
+
+
+      socket.emit(
+        "payment-app-connected",
+        {
+
+          success: true,
+
+          deviceId:
+            decoded.deviceId,
+
+          room:
+            "finance-mobile",
+
+        }
+      );
+
+    }
+
+  } catch (error) {
+
+    console.log(
+      "❌ Invalid Payment App Token:",
+      error.message
+    );
+
+
+    socket.emit(
+      "payment-app-error",
+      {
+        message:
+          "Payment App Token غير صالح",
+      }
+    );
+
+  }
+
+}
+
+
+// =====================================================
+// FINANCE DASHBOARD
+// =====================================================
+
+// وجود adminToken يسمح للـ socket بالاتصال
+// لكن دخول غرفة المالية يتم من خلال join-finance
+
+if (adminToken) {
+
+  socket.financeDashboard =
+    true;
+
+
+  console.log(
+    `💰 Finance Dashboard Socket Connected: ${socket.id}`
+  );
+
+
+  socket.emit(
+    "finance-dashboard-connected",
+    {
+
+      success: true,
+
+      socketId:
+        socket.id,
+
+    }
+  );
+
+}
+
+
+// =====================================================
+// JOIN FINANCE ROOM
+// =====================================================
+
+socket.on(
+  "join-finance",
+  () => {
+
+    try {
+
+      // ===============================================
+      // تأكد أن الاتصال Admin Dashboard
+      // ===============================================
+
+      if (
+        !socket.financeDashboard
+      ) {
+
+        console.log(
+          `❌ Unauthorized join-finance: ${socket.id}`
+        );
+
+        return;
+
+      }
+
+
+      // ===============================================
+      // JOIN ROOM
+      // ===============================================
+
+      socket.join(
+        "finance-mobile"
+      );
+
+
+      console.log(
+        `💰 Finance Dashboard Joined finance-mobile: ${socket.id}`
+      );
+
+
+      // ===============================================
+      // CONFIRM TO FRONTEND
+      // ===============================================
+
+      socket.emit(
+        "finance-joined",
+        {
+
+          success: true,
+
+          room:
+            "finance-mobile",
+
+          socketId:
+            socket.id,
+
+        }
+      );
+
+    } catch (error) {
+
+      console.log(
+        "❌ join-finance Error:",
+        error
+      );
+
+    }
+
+  }
+);
+
+
+// =====================================================
+// FINANCE MOBILE OFFLINE
+// =====================================================
+
+socket.on(
+  "finance-mobile-offline",
+  () => {
+
+    try {
+
+      socket.leave(
+        "finance-mobile"
+      );
+
+
+      console.log(
+        `💰 Finance Mobile Left finance-mobile: ${socket.id}`
+      );
+
+    } catch (err) {
+
+      console.log(
+        "Finance Mobile Offline Error:",
+        err
+      );
+
+    }
+
+  }
+);
+
+// =====================================================
+// 💰 FINANCE MOBILE DISCONNECT
+// =====================================================
+
+socket.on("finance-mobile-offline", () => {
+  try {
+    socket.leave("finance-mobile");
+
+    console.log(
+      `💰 Finance Mobile Offline: ${socket.financeAdminId || socket.id}`
+    );
+
+  } catch (err) {
+    console.log("Finance Mobile Offline Error:", err);
+  }
+});
     // ==========================
     // USER ONLINE
     // ==========================

@@ -1,6 +1,6 @@
 import Usermodel from "../DB/models/usermodel.js";
 import { asyncHandelr } from "../utlis/response/error.response.js"
-import { clienttoken, devtoken,  verifytoken,  } from "../utlis/security/Token.security.js";
+import { clienttoken, devtoken,  verifyadmin,  verifytoken,  } from "../utlis/security/Token.security.js";
 
 
 
@@ -19,7 +19,7 @@ switch (barer) {
          userid = await verifytoken(token)
         break;
 case "admin":
-         userid = await clienttoken(token)
+         userid = await verifyadmin(token)
         break;
     default:
         break;

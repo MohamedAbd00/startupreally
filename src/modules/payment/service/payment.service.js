@@ -989,26 +989,53 @@ export const getPaymentStatus =
   });
 
 
+  export const createappToken =
+  asyncHandelr(async (req, res, next) => {
 
-export const createSimulatorToken = (req, res, next) => {
-  try {
+    const {
+      username,
+      password,
+    } = req.body;
+
+    // ==========================================
+    // VALIDATION
+    // ==========================================
+
+    if (!username || !password) {
+      return next({
+        message: "اسم المستخدم وكلمة السر مطلوبين",
+        cause: 400,
+      });
+    }
+
+    // ==========================================
+    // AUTHENTICATION
+    // ==========================================
+
+    if (
+      username !== process.env.PAYMENT_SIMULATOR_USERNAME ||
+      password !== process.env.PAYMENT_SIMULATOR_PASSWORD
+    ) {
+      return next({
+        message: "اسم المستخدم أو كلمة السر غير صحيحة",
+        cause: 401,
+      });
+    }
+
+    // ==========================================
+    // CREATE TOKEN
+    // ==========================================
 
     const token = createPaymentAppToken({
       deviceId: "payment-simulator-001",
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "تم إنشاء Payment App Token",
-      token,
-    });
-
-  } catch (error) {
-    console.log("Create Simulator Token Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "فشل إنشاء Payment App Token",
-    });
-  }
-};
+    return successresponse(
+      res,
+      "تم إنشاء Payment App Token",
+      200,
+      {
+        token,
+      }
+    );
+  });

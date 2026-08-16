@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { createPaymentRequest, createSimulatorToken, getPaymentStatus, getPendingPayments, verifyPayment } from "./service/payment.service.js";
+import { createPaymentRequest, createappToken, getPaymentStatus, getPendingPayments, verifyPayment } from "./service/payment.service.js";
 import { paymentAppAuth } from "../../middlewere/financeMobileAuth.js";
 
 
@@ -39,9 +39,9 @@ router.post(
   paymentAppAuth,
   verifyPayment
 );
-router.get(
+router.post(
   "/payment-app/simulator-token",
-  createSimulatorToken
+  createappToken
 );
 
 export default router;

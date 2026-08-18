@@ -6,6 +6,7 @@ import Usermodel from "../../../DB/models/usermodel.js";
 import storeModel from "../../../DB/models/store.js";
 import proposal from "../../../DB/models/proposal.js";
 import Projects from "../../../DB/models/projects.js";
+import subscriptionm from "../../../DB/models/subscription.js"
 import tasks from "../../../DB/models/Tasks.js";
 import chat from "../../../DB/models/chat.js";
 import FolderModel from "../../../DB/models/folder.js";
@@ -15,8 +16,8 @@ import ProjectActivity from "../../../DB/models/activity.js";
 import Payment from "../../../DB/models/Payment .js";
 import projects from "../../../DB/models/projects.js";
 import { createNotification } from "../../../utlis/activity/createNotification.js";
-import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
-import { uploadToR2  } from "../../../utlis/multer/cloudflare.js";
+import { getCloudinaryPublicId, uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
+import { deleteFromR2, getR2Key, uploadToR2  } from "../../../utlis/multer/cloudflare.js";
 import Order from "../../../DB/models/Order.js";
 import Withdraw from "../../../DB/models/Withdraw.js";
 import Message from "../../../DB/models/massege.js";
@@ -30,6 +31,9 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 import { r2 } from "../../../utlis/multer/cloudflare.js";//استكمال البيانات
 import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
+import { createPaymentRequestService } from "../../payment/service/payment.service.js";
+
+//اكمال ملف الشخصي للمبرمج
 export const updateprofiledev = asyncHandelr(async (req, res, next) => {
   const id = req.user?._id;
 
@@ -467,15 +471,29 @@ export const updatestate = asyncHandelr(async (req, res, next) => {
     return next(new Error("المشروع غير موجود", { cause: 404 }));
   }
 
-  const updatedProject = await storeModel.findByIdAndUpdate(
+  if(project.public === "public"){
+    const updatedProject = await storeModel.findByIdAndUpdate(
     id,
     {
-      public: !project.public,
+      public: "private",
     },
     {
       new: true,
     }
   );
+  }
+
+    if(project.public === "private"){
+    const updatedProject = await storeModel.findByIdAndUpdate(
+    id,
+    {
+      public: "public",
+    },
+    {
+      new: true,
+    }
+  );
+  }
 await logUserActivity({
   userId: req.user._id,
   type: "project_updated",
@@ -490,6 +508,7 @@ await logUserActivity({
    
   );
 });
+
 //حذف المشروع
 export const deleteProject = asyncHandelr(async (req, res, next) => {
   const { id } = req.body;
@@ -510,25 +529,96 @@ export const deleteProject = asyncHandelr(async (req, res, next) => {
     return next(new Error("غير مصرح لك بحذف هذا المشروع", { cause: 403 }));
   }
 
-  // حذف الصور من Cloudinary
-  if (project.images?.length) {
-    for (const image of project.images) {
-      try {
-        const publicId = image
-          .split("/")
-          .slice(-2)
-          .join("/")
-          .split(".")[0];
+    // ==========================================
+    // 🖼️ حذف صور المشروع من Cloudinary
+    // ==========================================
 
-        await cloudinary.uploader.destroy(publicId);
-      } catch (err) {
-        console.log("Error deleting image:", err);
+    if (project.images?.length > 0) {
+      for (const imageUrl of project.images) {
+        try {
+          if (!imageUrl) continue;
+
+          const publicId = getCloudinaryPublicId(imageUrl);
+
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId, {
+              resource_type: "image",
+            });
+
+            console.log(
+              "✅ تم حذف الصورة من Cloudinary:",
+              publicId
+            );
+          }
+        } catch (error) {
+          console.error(
+            "❌ خطأ في حذف صورة Cloudinary:",
+            error
+          );
+        }
       }
     }
-  }
 
-  // حذف المشروع
-  await project.deleteOne();
+    // ==========================================
+    // 🎥 حذف الفيديو من R2
+    // ==========================================
+
+    if (project.videoUrl) {
+      try {
+        const videoKey = getR2Key(project.videoUrl);
+
+        if (videoKey) {
+          await deleteFromR2(videoKey);
+
+          console.log(
+            "✅ تم حذف الفيديو من R2:",
+            videoKey
+          );
+        }
+      } catch (error) {
+        console.error(
+          "❌ خطأ في حذف الفيديو:",
+          error
+        );
+      }
+    }
+
+    // ==========================================
+    // 📦 حذف ملف التحميل من R2
+    // ==========================================
+
+    if (project.downloadurl) {
+      try {
+        const downloadKey = getR2Key(
+          project.downloadurl
+        );
+
+        if (downloadKey) {
+          await deleteFromR2(downloadKey);
+
+          console.log(
+            "✅ تم حذف ملف التحميل من R2:",
+            downloadKey
+          );
+        }
+      } catch (error) {
+        console.error(
+          "❌ خطأ في حذف ملف التحميل:",
+          error
+        );
+      }
+    }
+
+    // ==========================================
+    // 🗑️ حذف المشروع من MongoDB
+    // ==========================================
+
+    await storeModel.findByIdAndDelete(id);
+
+    // ==========================================
+    // ✅ Response
+    // ==========================================
+
 await logUserActivity({
   userId: req.user._id,
   type: "project_deleted",
@@ -891,7 +981,11 @@ export const getMyProposals = asyncHandelr(async (req, res, next) => {
 export const getProjectRoom = asyncHandelr(async (req, res, next) => {
   const userId = req.user._id;
   const { projectId } = req.params;
-console.log(projectId)
+/*if(req.user.plan !== "vip" && req.user.userType === "developer"){
+    return next(new Error("يجب عليك الترقية لدخو هذه الغرفة ", { cause: 403 }));
+
+}*/
+
   const project = await Projects.findById(projectId)
     .populate("owner", "username profileImage")
     .populate("developertaked", "username profileImage");
@@ -3188,43 +3282,59 @@ export const deletepreviousprojects = asyncHandelr(async (req, res, next) => {
     );
   }
 
-  // ==========================
-  // حذف الصور
-  // ==========================
+    // ==========================================
+    // 🖼️ حذف صور المشروع من Cloudinary
+    // ==========================================
 
-  if (project.images?.length) {
-    for (const image of project.images) {
-      try {
-        const publicId = image
-          .split("/upload/")[1]
-          .replace(/^v\d+\//, "")
-          .split(".")[0];
+    if (project.images?.length > 0) {
+      for (const imageUrl of project.images) {
+        try {
+          if (!imageUrl) continue;
 
-        await cloudinary.uploader.destroy(publicId);
-      } catch (err) {
-        console.log("Error deleting image:", err);
+          const publicId = getCloudinaryPublicId(imageUrl);
+
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId, {
+              resource_type: "image",
+            });
+
+            console.log(
+              "✅ تم حذف الصورة من Cloudinary:",
+              publicId
+            );
+          }
+        } catch (error) {
+          console.error(
+            "❌ خطأ في حذف صورة Cloudinary:",
+            error
+          );
+        }
       }
     }
-  }
 
-  // ==========================
-  // حذف الفيديو
-  // ==========================
+    // ==========================================
+    // 🎥 حذف الفيديو من R2
+    // ==========================================
 
-  if (project.videoUrl) {
-    try {
-      const publicId = project.videoUrl
-        .split("/upload/")[1]
-        .replace(/^v\d+\//, "")
-        .split(".")[0];
+    if (project.videoUrl) {
+      try {
+        const videoKey = getR2Key(project.videoUrl);
 
-      await cloudinary.uploader.destroy(publicId, {
-        resource_type: "video",
-      });
-    } catch (err) {
-      console.log("Error deleting video:", err);
+        if (videoKey) {
+          await deleteFromR2(videoKey);
+
+          console.log(
+            "✅ تم حذف الفيديو من R2:",
+            videoKey
+          );
+        }
+      } catch (error) {
+        console.error(
+          "❌ خطأ في حذف الفيديو:",
+          error
+        );
+      }
     }
-  }
 
   // ==========================
   // حذف المشروع
@@ -3273,3 +3383,292 @@ export const generateProjectFileUploadUrl = asyncHandelr(async (req, res) => {
     });
 
 });
+
+
+
+export const getSubscription = asyncHandelr(
+  async (req, res, next) => {
+
+    const userId = req.user._id;
+
+    // ==========================================
+    // GET LATEST SUBSCRIPTION
+    // ==========================================
+
+    let subscription = await Subscription.findOne({
+      user: userId,
+    })
+      .sort({
+        createdAt: -1,
+      })
+      .populate(
+        "paymentRequest",
+        "reference amount type status expiresAt transactionId"
+      );
+
+    // ==========================================
+    // NO SUBSCRIPTION
+    // ==========================================
+
+    if (!subscription) {
+
+      subscription = await Subscription.create({
+        user: userId,
+        plan: "free",
+        status: "active",
+        amount: 0,
+      });
+
+    }
+
+    // ==========================================
+    // CHECK VIP EXPIRATION
+    // ==========================================
+
+    if (
+      subscription.plan === "vip" &&
+      subscription.status === "active" &&
+      subscription.endDate &&
+      subscription.endDate <= new Date()
+    ) {
+
+      subscription.plan = "free";
+      subscription.status = "expired";
+
+      await subscription.save();
+    }
+
+    // ==========================================
+    // RESPONSE
+    // ==========================================
+
+    return successresponse(
+      res,
+      "تم جلب الاشتراك بنجاح",
+      200,
+      {
+        subscription,
+      }
+    );
+  }
+);
+
+
+// =====================================================
+// CREATE VIP SUBSCRIPTION PAYMENT
+// =====================================================
+
+export const createVipSubscription =
+  asyncHandelr(async (req, res, next) => {
+
+    const userId = req.user._id;
+
+    const {
+      senderPhone,
+    name
+    } = req.body;
+
+    // ==========================================
+    // VIP PRICE
+    // ==========================================
+
+    const amount = 450;
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      return next(
+        new Error(
+          "سعر اشتراك VIP غير مضبوط",
+          {
+            cause: 500,
+          }
+        )
+      );
+    }
+
+    // ==========================================
+    // CHECK ACTIVE VIP
+    // ==========================================
+
+    const activeSubscription =
+      await subscriptionm.findOne({
+        user: userId,
+        plan: "vip",
+        status: "active",
+        endDate: {
+          $gt: new Date(),
+        },
+      });
+
+    if (activeSubscription) {
+
+      return next(
+        new Error(
+          "أنت مشترك بالفعل في VIP",
+          {
+            cause: 400,
+          }
+        )
+      );
+    }
+
+    // ==========================================
+    // CHECK PENDING SUBSCRIPTION
+    // ==========================================
+
+    const pendingSubscription =
+      await subscriptionm.findOne({
+        user: userId,
+        plan: "vip",
+        status: "pending",
+      }).populate(
+        "paymentRequest",
+        "reference amount type status expiresAt"
+      );
+
+    if (pendingSubscription) {
+
+      // لو طلب الدفع نفسه ما زال صالحًا
+      if (
+        pendingSubscription.paymentRequest &&
+        pendingSubscription.paymentRequest.status === "pending" &&
+        pendingSubscription.paymentRequest.expiresAt &&
+        pendingSubscription.paymentRequest.expiresAt > new Date()
+      ) {
+
+        return next(
+          new Error(
+            "يوجد بالفعل طلب اشتراك VIP قيد الدفع",
+            {
+              cause: 400,
+            }
+          )
+        );
+      }
+
+      // لو طلب الدفع انتهى أو اترفض
+      pendingSubscription.status = "expired";
+
+      await pendingSubscription.save();
+    }
+
+    // ==========================================
+    // SOCKET
+    // ==========================================
+
+    const io = req.app.get("io");
+
+    // ==========================================
+    // CREATE PAYMENT REQUEST
+    // ==========================================
+
+    const payment =
+      await createPaymentRequestService({
+        userId,
+project: null,
+        orderId: null,
+
+        type: "subscription",
+
+        amount,
+
+        senderPhone,
+
+        io,
+      });
+
+    // ==========================================
+    // CREATE SUBSCRIPTION
+    // ==========================================
+
+    const subscription =
+      await subscriptionm.create({
+
+        user: userId,
+
+        plan: "vip",
+
+        status: "pending",
+
+        amount,
+name,
+        paymentRequest:
+          payment._id,
+
+      });
+
+    // ==========================================
+    // RESPONSE
+    // ==========================================
+
+    return successresponse(
+      res,
+      "تم إنشاء طلب اشتراك VIP",
+      201,
+      {
+        subscription,
+
+        payment: {
+
+          _id:
+            payment._id,
+
+          reference:
+            payment.reference,
+
+          amount:
+            payment.amount,
+
+          type:
+            payment.type,
+
+          senderPhone:
+            payment.senderPhone,
+
+          paymentNumber:
+            payment.paymentNumber,
+
+          status:
+            payment.status,
+
+          expiresAt:
+            payment.expiresAt,
+
+        },
+      }
+    );
+  });
+
+
+// =====================================================
+// SUBSCRIPTION HISTORY
+// =====================================================
+
+export const getSubscriptionHistory =
+  asyncHandelr(async (req, res) => {
+
+    const userId = req.user._id;
+
+    const subscriptions =
+      await Subscription.find({
+        user: userId,
+      })
+        .populate(
+          "paymentRequest",
+          "reference amount status transactionId createdAt"
+        )
+        .sort({
+          createdAt: -1,
+        });
+
+    return successresponse(
+      res,
+      "تم جلب سجل الاشتراكات",
+      200,
+      {
+        subscriptions,
+      }
+    );
+  });

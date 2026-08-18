@@ -1,7 +1,7 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { addMember,  addpreviousprojects,  createFolder, createProject, createProposal, createTask, deleteAccount, deleteFolder, deletepreviousprojects, deleteProject, deleteProjectFile, deleteTask, generateProjectFileUploadUrl, getallprojects, getDeveloperDashboard, getDeveloperEarnings, GetDeveloperProjects, getFolderFiles, getMyProposals, getOpenProjects, getpreviousprojects, getProjectActivity, getProjectFolders, getProjectMembers, getProjectRoom, getProjectTasks, removeMember, requestwithdraw, updateAccountSettings, updateNotificationSettings, updateprofiledev, updateProject, updateProjectLinks, updatestate, updateTaskStatus, uploadProjectFil } from "./service/dev.service.js";
+import { addMember,  addpreviousprojects,  createFolder, createProject, createProposal, createTask, createVipSubscription, deleteAccount, deleteFolder, deletepreviousprojects, deleteProject, deleteProjectFile, deleteTask, generateProjectFileUploadUrl, getallprojects, getDeveloperDashboard, getDeveloperEarnings, GetDeveloperProjects, getFolderFiles, getMyProposals, getOpenProjects, getpreviousprojects, getProjectActivity, getProjectFolders, getProjectMembers, getProjectRoom, getProjectTasks, getSubscription, getSubscriptionHistory, removeMember, requestwithdraw, updateAccountSettings, updateNotificationSettings, updateprofiledev, updateProject, updateProjectLinks, updatestate, updateTaskStatus, uploadProjectFil } from "./service/dev.service.js";
 import { upload, uploadProjectFiles   } from "../../utlis/multer/cloud.multer.js";
 import {  uploadStoreProject   } from "../../utlis/multer/clouid.multern.js";
 import { getVideoUploadUrl } from "./service/r2.service.js";
@@ -222,6 +222,36 @@ middlewere(),
  
   deletepreviousprojects
 );
+
+
+router.get(
+  "/mesub",
+  middlewere(),
+  getSubscription
+);
+
+
+// =====================================================
+// CREATE VIP PAYMENT
+// =====================================================
+
+router.post(
+  "/vip",
+  middlewere(),
+  createVipSubscription
+);
+
+
+// =====================================================
+// SUBSCRIPTION HISTORY
+// =====================================================
+
+router.get(
+  "/history",
+  middlewere(),
+  getSubscriptionHistory
+);
+
 
 
 export default router

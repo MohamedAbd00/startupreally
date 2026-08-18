@@ -43,7 +43,12 @@ senderPhone: {
       type: String,
       required: true,
     },
-
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
+      default: null,
+      index: true,
+    },
     status: {
       type: String,
       enum: [

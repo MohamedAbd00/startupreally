@@ -1,7 +1,7 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import { acceptProposal, Addbatch, addfeatures, addObjective, addreport, buyproject, clinetapprove, clinetdashboard, compliteprofileclient, createproject, createsupport, deleteAccount, getalldev, getAllImages, getClientProjects, getdetilsproject, getdevprofile, gethomedetails, getmyprojectbuyed, getProjectProposals, getProjectReviews, getstore, rejectProposal, submitProjectReview, submitReview, updateAccountSettings, updateNotificationSettings } from "./service/clinet.service.js";
+import { acceptProposal, Addbatch, addfeatures, addObjective, addreport, buyproject, clinetapprove, clinetdashboard, compliteprofileclient, createproject, createsupport, deleteAccount, getalldev, getAllImages, getClientProjects, getdetilspreviousprojects, getdetilsproject, getdevprofile, gethomedetails, getmyprojectbuyed, getpreviousprojects, getProjectProposals, getProjectReviews, getstore, rejectProposal, submitProjectReview, submitReview, updateAccountSettings, updateNotificationSettings } from "./service/clinet.service.js";
 import { uploadStoreProject } from "../../utlis/multer/clouid.multern.js";
 const router = Router()
 //اكمال الملف الشخصي
@@ -163,6 +163,12 @@ router.post(
   ]),
   addreport
 );
+
+
+router.get('/getpreviousprojects',  getpreviousprojects);
+router.get('/getdetilspreviousprojects/:id', middlewere(),  getdetilspreviousprojects);
+
+
 
 
 export default router

@@ -22,6 +22,7 @@ import { sendemail } from "../../../utlis/email/sendemail.js";
 import { acceptedEmail } from "../../../utlis/temblete/vervication.email.js";
 import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
 import { createPaymentRequest, createPaymentRequestService } from "../../payment/service/payment.service.js";
+import previousprojectsModel from "../../../DB/models/previousprojects.js";
 
 //تسجيل الدخول
 
@@ -469,73 +470,187 @@ await logUserActivity({
 
 //اضافة دفعة لمشروع معين
 export const Addbatch = asyncHandelr(async (req, res, next) => {
+
   const userId = req.user._id;
+
   const { projectid } = req.params;
+
   const {name , amount , type , phone} = req.body;
 
-if(!userId || !projectid || !name || !amount || !type || !phone ){
-      return next(new Error("جميع الحقول مطلوبة", { cause: 404 }));
+  if(!userId || !projectid || !name || !amount || !type || !phone ){
 
-}
-
-const project = await projects.findById(projectid).populate("developertaked", "notificationSettings")
-if(!project){
-        return next(new Error("المشروع غير موجود", { cause: 404 }));
-
-}
- if (project.clientApproved) {
     return next(
-      new Error("تم الانتهاء من المشروع لايمكنك التعديل", { cause: 404 })
+      new Error("جميع الحقول مطلوبة", {
+        cause: 404
+      })
     );
+
   }
+
+  const project = await projects
+    .findById(projectid)
+    .populate(
+      "developertaked",
+      "notificationSettings"
+    );
+
+  if(!project){
+
+    return next(
+      new Error("المشروع غير موجود", {
+        cause: 404
+      })
+    );
+
+  }
+
+  if (project.clientApproved) {
+
+    return next(
+
+      new Error(
+        "تم الانتهاء من المشروع لايمكنك التعديل",
+        {
+          cause: 404
+        }
+      )
+
+    );
+
+  }
+
   if (project.owner.toString() !== userId.toString()) {
+
     return next(
-      new Error("غير مصرح لك", { cause: 403 })
+
+      new Error(
+        "غير مصرح لك",
+        {
+          cause: 403
+        }
+      )
+
     );
+
   }
+ // ==========================================
+  // OLD PAYMENT
+  // ==========================================
 
   const donePayment = await Payment.create({
-    project: projectid ,
-    createdBy : userId,
-    namePayment: name,
-     amount , 
-    transferNumber :phone,
-typewallet: type
-  })
-  
-  await createProjectActivity({
-  project: projectid,
-  user: userId,
-  action: "payment_added",
-  targetType: "payment",
-  targetId: donePayment._id,
-  metadata: {
-    taskTitle: "payment_added",
-    amount
-  },
-});
-if(project.developertaked.notificationSettings.payments == true){
-  await createNotification({
-    receiver:project.developertaked ,
-    sender:userId ,
-    type: "payment",
-    title: "لقد تم اضافة دفعة جديدة وهي الان تحت المراجعة",
-    body: amount,
-    project: projectid,
-});
-await logUserActivity({
-  userId: req.user._id,
-  type: "payment_completed",
-  metadata: {
-    paymentId: donePayment._id,
-    amount: amount,
-    type: type,
-  },
-});
-}
-  return successresponse(res, "تم ارسال طلب الدفع", 200);
 
-})
+    project: projectid,
+
+    createdBy : userId,
+
+    namePayment: name,
+typewallet: type,
+    amount,
+
+    transferNumber :phone,
+
+    typepayment: "freelance"
+
+  });
+
+
+  // ==========================================
+  // NEW PAYMENT REQUEST
+  // ==========================================
+
+  const io = req.app.get("io");
+
+  const paymentRequest =
+    await createPaymentRequestService({
+
+      userId: userId,
+  project: donePayment._id,
+      orderId: null,
+
+      type: "freelance",
+
+      amount: amount,
+
+      senderPhone: phone,
+
+      io: io,
+
+    
+
+    });
+
+
+ 
+
+  await createProjectActivity({
+
+    project: projectid,
+
+    user: userId,
+
+    action: "payment_added",
+
+    targetType: "payment",
+
+    targetId: donePayment._id,
+
+    metadata: {
+
+      taskTitle: "payment_added",
+
+      amount
+
+    },
+
+  });
+
+
+  if(project.developertaked.notificationSettings.payments == true){
+
+    await createNotification({
+
+      receiver:project.developertaked ,
+
+      sender:userId ,
+
+      type: "payment",
+
+      title: "لقد تم اضافة دفعة جديدة وهي الان تحت المراجعة",
+
+      body: amount,
+
+      project: projectid,
+
+    });
+
+    await logUserActivity({
+
+      userId: req.user._id,
+
+      type: "payment_completed",
+
+      metadata: {
+
+        paymentId: donePayment._id,
+
+        amount: amount,
+
+        type: type,
+
+      },
+
+    });
+
+  }
+
+
+  return successresponse(
+    res,
+    "تم ارسال طلب الدفع",
+    200
+  );
+
+});
 
 // إضافة هدف جديدة
 export const addObjective = asyncHandelr(async (req, res, next) => {
@@ -1148,6 +1263,7 @@ await createPaymentRequestService({
   type: done.typewallet,
   amount: done.amount,
   senderPhone: done.phone,
+  project: null ,
   io,
 });
 await storeModel.findByIdAndUpdate(
@@ -1503,3 +1619,40 @@ export const addreport = asyncHandelr(async (req, res, next) => {
   );
 });
 
+
+
+//جلب الاعمال
+export const getpreviousprojects = asyncHandelr(async (req, res, next) => {
+
+
+const stors = await previousprojectsModel.find().populate("owner", "username profileImage");
+  return successresponse(
+    res,
+    "تم جلب الاعمال بنجاح",
+    200,
+    {
+      stores: stors,
+     
+     
+    }
+  );
+});
+
+//جلب عمل معين
+export const getdetilspreviousprojects = asyncHandelr(async (req, res, next) => {
+const {id} = req.params
+ const project = await previousprojectsModel.findById(id).populate("owner" , "username profileImage rating");
+if(!project){
+    return next    ( new Error("المشروع غير موجود", { cause: 404 }))
+
+}
+  return successresponse(
+    res,
+    "تم جلب المشروع بنجاح",
+    200,
+ {
+  project,
+
+}
+  );
+});

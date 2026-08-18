@@ -22,10 +22,10 @@ app.use(cors({
 // origin: "https://progzila.com",
 
      origin: [
-   // "http://localhost:5173",
-   // "http://localhost:55484",
+    "http://localhost:5173",
+    "http://localhost:56902",
     "https://progzila.com",
-   // "http://localhost:5174"
+    "http://localhost:5174"
   ],
 
 

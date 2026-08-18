@@ -20,6 +20,9 @@ export const login = asyncHandelr(async(req , res , next)=>{
     if(!users){
          return next(new Error("الايميل غير موجود", { cause: 400 }));
     }
+     if(users.userType === "admin"){
+         return next(new Error("لا يمنكك تسجيل الدخول", { cause: 400 }));
+    }
     if (users.isBlocked == true) {
         return next(new Error("الايميل محظور تواصل مع الدعم", { cause: 400 }));
     }
@@ -384,7 +387,9 @@ if (users.userType !== "admin") {
         res,
         "تم تسجيل الدخول بنجاح",
         200,
-      {token: tokens}
+      {token: tokens,
+        accses: users.accses
+      }
     );
     
   })

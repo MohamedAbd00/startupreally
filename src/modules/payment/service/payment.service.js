@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import PaymentRequest from "../../../DB/models/PaymentRequest.js";
-
+import subscriptionm from "../../../DB/models/subscription.js"
 import {
   asyncHandelr,
 } from "../../../utlis/response/error.response.js";
@@ -12,6 +12,9 @@ import {
 
 import Order from "../../../DB/models/Order.js";
 import { createPaymentAppToken } from "../../../utlis/security/Token.security.js";
+import Usermodel from "../../../DB/models/usermodel.js";
+import Payment from "../../../DB/models/Payment .js";
+import projects from "../../../DB/models/projects.js";
 
 
 // =====================================================
@@ -351,6 +354,7 @@ export const createPaymentRequest =
       amount,
       orderId,
       senderPhone,
+      project
     } = req.body;
 
     const io =
@@ -363,6 +367,7 @@ export const createPaymentRequest =
         type,
         amount,
         senderPhone,
+        project,
         io,
       });
 
@@ -404,6 +409,7 @@ export const createPaymentRequest =
   orderId,
   type,
   amount,
+  project ,
   senderPhone,
   io,
 }) => {
@@ -536,7 +542,7 @@ export const createPaymentRequest =
       paymentNumber,
 
       status: "pending",
-
+project,
       expiresAt: new Date(
         Date.now() +
           15 * 60 * 1000
@@ -565,6 +571,10 @@ export const createPaymentRequest =
         senderPhone:
           payment.senderPhone,
 
+  project:
+          payment.project
+            ? payment.project.toString()
+            : null,
         orderId:
           payment.order
             ? payment.order.toString()
@@ -810,7 +820,27 @@ export const verifyPayment =
     };
 
     await payment.save();
+// ==========================================
+// CREATE FREELANCE PAYMENT
+// ==========================================
 
+if (payment.type === "freelance") {
+
+  if (!payment.project) {
+    return next(
+      new Error(
+        "المشروع المرتبط بعملية الدفع غير موجود",
+        {
+          cause: 404,
+        }
+      )
+    );
+  }
+
+
+  const donePayment = await Payment.findOneAndUpdate({_id:payment.project},{status: "paid"});
+
+}
 
     // ==========================================
     // UPDATE ORDER
@@ -822,7 +852,55 @@ export const verifyPayment =
         paidAt: new Date(),
       });
     }
+// ==========================================
+// UPDATE SUBSCRIPTION
+// ==========================================
 
+if (payment.type === "subscription") {
+
+  const subscription =
+    await subscriptionm.findOne({
+      paymentRequest: payment._id,
+      user: payment.user,
+    });
+
+  if (!subscription) {
+
+    return next(
+      new Error(
+        "الاشتراك المرتبط بعملية الدفع غير موجود",
+        {
+          cause: 404,
+        }
+      )
+    );
+  }
+
+  const startDate = new Date();
+
+  const endDate = new Date(startDate);
+
+  // VIP لمدة شهر
+  endDate.setMonth(
+    endDate.getMonth() + 1
+  );
+
+  subscription.plan = "vip";
+
+  subscription.status = "active";
+
+  subscription.amount = payment.amount;
+
+  subscription.startDate = startDate;
+
+  subscription.endDate = endDate;
+
+  await subscription.save();
+  
+  
+    await Usermodel.findOneAndUpdate({ _id: subscription.user }, {plan:"vip"});
+
+}
 
     // ==========================================
     // REALTIME

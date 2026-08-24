@@ -182,7 +182,7 @@ setImmediate(async () => {
 
     <!-- CTA Button -->
     <a
-      href="http://localhost:5173/dashboard/developer/project-proposals"
+      href="https://progzila.com/dashboard/developer/project-proposals"
       style="
         display: inline-block;
         padding: 12px 28px;

@@ -2642,345 +2642,862 @@ return successresponse(
     }
 );})
 //جلب بيانات الداش بورد
-export const getDeveloperDashboard = async (req, res) => {
-  try {
-    const developerId = req.user._id;
+export const getDeveloperDashboard = asyncHandelr(async (req, res, next) => {
+
+    const developer = req.user._id;
+
     const now = new Date();
 
-    // تجهيز تواريخ اليوم، الأسبوع، والشهر للحسابات المالية
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const week = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-    const month = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+    );
 
-    // =========================================================================
-    // 1. تنفيذ جميع العمليات بشكل متوازٍ باستخدام Promise.all (لأعلى أداء)
-    // =========================================================================
+    const week = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 7
+    );
+
+    const month = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1
+    );
+
+    // ============================
+    // جميع البيانات بشكل متوازي
+    // ============================
+
     const [
-      projectStatsData,
-      notificationStatsData,
-      totalStoreProjects,
-      totalChats,
-      totalTasks,
-      freelanceDataResult,
-      storeDataResult,
-      withdrawsResult,
-      stores, // نحتاجها لاحقاً لحساب المشاهدات
-      recentProjects,
-      recentSales,
-      recentMessages,
-      upcomingTasks,
-      topSellingProducts,
-      latestNotifications,
-        reviewStats,
-    ] = await Promise.all([
-      
-      // -- إحصائيات المشاريع (إجمالي، مكتمل، جاري) في استعلام واحد بدلاً من 3 --
-      Projects.aggregate([
-        { $match: { developertaked: developerId } },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: 1 },
-            completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
-            ongoing: { $sum: { $cond: [{ $in: ["$status", ["pending", "review", "in_progress"]] }, 1, 0] } },
-          },
-        },
-      ]),
-
-      // -- إحصائيات الإشعارات (الكل، غير المقروء) في استعلام واحد بدلاً من 2 --
-      Notification.aggregate([
-        { $match: { receiver: developerId } },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: 1 },
-            unread: { $sum: { $cond: [{ $eq: ["$isRead", false] }, 1, 0] } },
-          },
-        },
-      ]),
-
-      // -- الإحصائيات الفردية --
-      storeModel.countDocuments({ owner: developerId }),
-      chat.countDocuments({ developer: developerId }),
-      Tasks.countDocuments({ createdBy: developerId }),
-
-      // -- إحصائيات الـ Freelance (Payments) باستخدام Lookup و Facet --
-      Payment.aggregate([
-        {
-          // الربط مع المشاريع لمعرفة المطور الحقيقي
-          $lookup: {
-            from: "projects", // تأكد أن هذا هو اسم الكولكشن في قاعدة البيانات
-            localField: "project", // الحقل الموجود في Payment
-            foreignField: "_id",
-            as: "projectData",
-          },
-        },
-        { $unwind: "$projectData" },
-        { $match: { "projectData.developertaked": developerId } },
-        {
-          $facet: {
-            paidStats: [
-              { $match: { status: "paid" } },
-              {
-                $group: {
-                  _id: null,
-                  totalEarnings: { $sum: "$amount" },
-                  todayEarnings: { $sum: { $cond: [{ $gte: ["$createdAt", today] }, "$amount", 0] } },
-                  weeklyEarnings: { $sum: { $cond: [{ $gte: ["$createdAt", week] }, "$amount", 0] } },
-                  monthlyEarnings: { $sum: { $cond: [{ $gte: ["$createdAt", month] }, "$amount", 0] } },
-                },
-              },
-            ],
-            pendingStats: [
-              { $match: { status: "pending" } },
-              {
-                $group: {
-                  _id: null,
-                  pendingBalance: { $sum: "$amount" },
-                },
-              },
-            ],
-            chartData: [
-              { $match: { status: "paid" } },
-              {
-                $group: {
-                  _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
-                  earnings: { $sum: "$amount" },
-                },
-              },
-            ],
-          },
-        },
-      ]),
-
-      // -- إحصائيات المتجر (Orders) باستخدام Facet --
-      Order.aggregate([
-        { $match: { developer: developerId, status: "paid" } },
-        {
-          $facet: {
-            paidStats: [
-              {
-                $group: {
-                  _id: null,
-                  totalSales: { $sum: 1 },
-                  storeRevenue: { $sum: "$amount" },
-                  todayEarnings: { $sum: { $cond: [{ $gte: ["$createdAt", today] }, "$amount", 0] } },
-                  weeklyEarnings: { $sum: { $cond: [{ $gte: ["$createdAt", week] }, "$amount", 0] } },
-                  monthlyEarnings: { $sum: { $cond: [{ $gte: ["$createdAt", month] }, "$amount", 0] } },
-                },
-              },
-            ],
-            chartData: [
-              {
-                $group: {
-                  _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
-                  earnings: { $sum: "$amount" },
-                },
-              },
-            ],
-          },
-        },
-      ]),
-
-      // -- إحصائيات السحب (Withdraws) --
-      Withdraw.aggregate([
-        { $match: { developer: developerId } },
-        {
-          $group: {
-            _id: "$status", // نجمع حسب الحالة (completed / pending)
-            total: { $sum: "$amount" },
-          },
-        },
-      ]),
-
-      // -- المتاجر (لجلب المشاهدات لاحقاً) --
-      storeModel.find({ owner: developerId }).select("_id").lean(),
-
-      // -- العمليات الأخيرة (Recent Data) - لم تتغير ميزاتها بل تم تحسينها بـ lean --
-      projects.find({ developertaked: developerId }).populate("owner", "username profileImage").sort({ updatedAt: -1 }).limit(5).lean(),
-      Order.find({ developer: developerId, status: "paid" }).populate("buyer", "username profileImage").populate("project", "projectName").sort({ createdAt: -1 }).limit(5).lean(),
-      chat.find({ developer: developerId }).populate({ path: "lastMessage", populate: { path: "sender", select: "username profileImage" } }).populate("client", "username profileImage").sort({ updatedAt: -1 }).limit(5).lean(),
-      tasks.find({ createdBy: developerId, status: { $ne: "completed" } }).populate("project", "projectName").sort({ dueDate: 1 }).limit(5).lean(),
-      
-      // Top Selling Products
-      Order.aggregate([
-        { $match: { developer: developerId, status: "paid" } },
-        { $group: { _id: "$project", sales: { $sum: 1 }, revenue: { $sum: "$amount" } } },
-        { $sort: { sales: -1 } },
-        { $limit: 5 },
-        { $lookup: { from: "stores", localField: "_id", foreignField: "_id", as: "project" } },
-        { $unwind: "$project" },
-        {
-          $project: {
-            _id: 1,
-            sales: 1,
-            revenue: 1,
-            projectName: "$project.projectName",
-            images: "$project.images",
-            category: "$project.category",
-          },
-        },
-      ]),
-      
-      Notification.find({ receiver: developerId }).sort({ createdAt: -1 }).limit(5).lean(),
-      projectreviwe.aggregate([
-  { $match: { developer: developerId } },
-  {
-    $group: {
-      _id: null,
-      averageRating: { $avg: "$rating" },
-      totalReviews: { $sum: 1 },
-    },
-  },
-]),
-    ]);
-
-    // =========================================================================
-    // 2. معالجة وتجهيز البيانات الناتجة
-    // =========================================================================
-
-    // استخراج الإحصائيات من نواتج Aggregations (مع قيم افتراضية 0 في حال عدم وجود بيانات)
-    const projectStats = projectStatsData[0] || { total: 0, completed: 0, ongoing: 0 };
-    const notifStats = notificationStatsData[0] || { total: 0, unread: 0 };
-    
-    const freelanceData = freelanceDataResult[0] || { paidStats: [], pendingStats: [], chartData: [] };
-    const fStats = freelanceData.paidStats[0] || { totalEarnings: 0, todayEarnings: 0, weeklyEarnings: 0, monthlyEarnings: 0 };
-    const freelancePending = freelanceData.pendingStats[0]?.pendingBalance || 0;
-
-    const storeData = storeDataResult[0] || { paidStats: [], chartData: [] };
-    const sStats = storeData.paidStats[0] || { totalSales: 0, storeRevenue: 0, todayEarnings: 0, weeklyEarnings: 0, monthlyEarnings: 0 };
-
-    // عمليات السحب (Withdraws)
-    const totalWithdrawn = withdrawsResult.find(w => w._id === "completed")?.total || 0;
-    const pendingWithdraw = withdrawsResult.find(w => w._id === "pending")?.total || 0;
-const reviews = reviewStats[0] || {
-  averageRating: 0,
-  totalReviews: 0,
-};
-    // =========================================================================
-    // 3. الحسابات المالية (كما تم طلبها بالضبط)
-    // =========================================================================
-
-    const freelanceRevenue = fStats.totalEarnings;
-    const marketplaceRevenue = sStats.storeRevenue;
-    const totalEarnings = freelanceRevenue + marketplaceRevenue;
-
-    const todayEarnings = fStats.todayEarnings + sStats.todayEarnings;
-    const weeklyEarnings = fStats.weeklyEarnings + sStats.weeklyEarnings;
-    const monthlyEarnings = fStats.monthlyEarnings + sStats.monthlyEarnings;
-
-    // الرصيد المعلق هو مجموع الـ payments المعلقة الخاصة بمشاريع المطور
-    const pendingBalance = freelancePending;
-
-    // الرصيد المتاح يحسب برمجياً (ديناميكياً)
-    const availableBalance = totalEarnings - totalWithdrawn - pendingWithdraw;
-
-    // =========================================================================
-    // 4. دمج الرسم البياني (Orders + Payments) في Map
-    // =========================================================================
-    const chartMap = new Map();
-
-    const addToChartMap = (dataArray) => {
-      dataArray.forEach((item) => {
-        if (!item._id || !item._id.year || !item._id.month) return;
-        // إنشاء مفتاح لترتيب البيانات لاحقاً (مثال: 2023-05)
-        const key = `${item._id.year}-${String(item._id.month).padStart(2, "0")}`;
-        const currentEarnings = chartMap.get(key) || 0;
-        chartMap.set(key, currentEarnings + item.earnings);
-      });
-    };
-
-    addToChartMap(freelanceData.chartData); // دمج المدفوعات (Freelance)
-    addToChartMap(storeData.chartData);     // دمج الطلبات (Store)
-
-    // تحويل الـ Map لمصفوفة، ترتيبها تصاعدياً حسب السنة والشهر، واقتطاع آخر 6 شهور
-    const monthlyChart = Array.from(chartMap.entries())
-      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB)) // ترتيب تصاعدي حسب مفتاح التاريخ
-      .slice(-6)
-      .map(([key, earnings]) => {
-        const [, monthStr] = key.split("-");
-        return {
-          month: parseInt(monthStr, 10),
-          earnings,
-        };
-      });
-
-    // =========================================================================
-    // 5. حساب مشاهدات المتاجر ومعدل التحويل (Store Views & Conversion)
-    // =========================================================================
-    const storeIds = stores.map((store) => store._id);
-    const totalViews = await StoreView.countDocuments({
-      project: { $in: storeIds },
-    });
-
-    const conversionRate =
-      totalViews === 0
-        ? 0
-        : Number(((sStats.totalSales / totalViews) * 100).toFixed(2));
-
-    // =========================================================================
-    // 6. إرسال الـ Response (نفس الشكل الأصلي 100%)
-    // =========================================================================
-    return res.status(200).json({
-      success: true,
-
-      statistics: {
-        totalProjects: projectStats.total,
-        completedProjects: projectStats.completed,
-        ongoingProjects: projectStats.ongoing,
-
-        totalProducts: totalStoreProjects,
-        totalOrders: sStats.totalSales,
-
-        freelanceRevenue,
-        marketplaceRevenue,
-        totalEarnings,
-
-        availableBalance,
-        pendingBalance,
-
-        totalWithdrawn,
-        pendingWithdraw,
-averageRating: Number((reviews.averageRating || 0).toFixed(1)),
-totalReviews: reviews.totalReviews,
+        projectStats,
+        totalProducts,
         totalChats,
         totalTasks,
+        freelanceData,
+        storeData,
+        withdrawSummary,
+        stores,
+        recentProjects,
+        recentSales,
+        recentMessages,
+        upcomingTasks,
+        reviewStats,
+    ] = await Promise.all([
 
-        totalNotifications: notifStats.total,
-        unreadNotifications: notifStats.unread,
+        // ============================
+        // إحصائيات المشاريع
+        // ============================
 
-        totalViews,
-        conversionRate,
-      },
+        Projects.aggregate([
+            {
+                $match: {
+                    developertaked: developer,
+                },
+            },
+            {
+                $group: {
+                    _id: null,
 
-      earnings: {
-        total: totalEarnings,
-        today: todayEarnings,
-        week: weeklyEarnings,
-        month: monthlyEarnings,
-      },
+                    total: {
+                        $sum: 1,
+                    },
 
-      charts: {
-        monthlyChart,
-      },
+                    completed: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $eq: [
+                                        "$status",
+                                        "completed",
+                                    ],
+                                },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
 
-      recentProjects,
-      recentSales,
-      recentMessages,
-      upcomingTasks,
-      topSellingProducts,
-      latestNotifications,
-    
+                    ongoing: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $in: [
+                                        "$status",
+                                        [
+                                            "pending",
+                                            "review",
+                                            "in_progress",
+                                        ],
+                                    ],
+                                },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                },
+            },
+        ]),
+
+        // ============================
+        // إجمالي منتجات المتجر
+        // ============================
+
+        storeModel.countDocuments({
+            owner: developer,
+        }),
+
+        // ============================
+        // إجمالي المحادثات
+        // ============================
+
+        chat.countDocuments({
+            developer,
+        }),
+
+        // ============================
+        // إجمالي المهام
+        // ============================
+
+        Tasks.countDocuments({
+            createdBy: developer,
+        }),
+
+        // ============================
+        // أرباح المشاريع
+        // ============================
+
+        Projects.aggregate([
+            {
+                $match: {
+                    developertaked: developer,
+                },
+            },
+            {
+                $lookup: {
+                    from: Payment.collection.name,
+                    localField: "_id",
+                    foreignField: "project",
+                    as: "payments",
+                },
+            },
+            {
+                $unwind: "$payments",
+            },
+            {
+                $replaceRoot: {
+                    newRoot: "$payments",
+                },
+            },
+            {
+                $facet: {
+
+                    // الأرباح المدفوعة
+
+                    paidStats: [
+                        {
+                            $match: {
+                                status: "paid",
+                            },
+                        },
+                        {
+                            $group: {
+                                _id: null,
+
+                                totalEarnings: {
+                                    $sum: "$amount",
+                                },
+
+                                todayEarnings: {
+                                    $sum: {
+                                        $cond: [
+                                            {
+                                                $gte: [
+                                                    "$createdAt",
+                                                    today,
+                                                ],
+                                            },
+                                            "$amount",
+                                            0,
+                                        ],
+                                    },
+                                },
+
+                                weeklyEarnings: {
+                                    $sum: {
+                                        $cond: [
+                                            {
+                                                $gte: [
+                                                    "$createdAt",
+                                                    week,
+                                                ],
+                                            },
+                                            "$amount",
+                                            0,
+                                        ],
+                                    },
+                                },
+
+                                monthlyEarnings: {
+                                    $sum: {
+                                        $cond: [
+                                            {
+                                                $gte: [
+                                                    "$createdAt",
+                                                    month,
+                                                ],
+                                            },
+                                            "$amount",
+                                            0,
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    ],
+
+                    // الرصيد المعلق
+
+                    pendingStats: [
+                        {
+                            $match: {
+                                status: "pending",
+                            },
+                        },
+                        {
+                            $group: {
+                                _id: null,
+
+                                pendingBalance: {
+                                    $sum: "$amount",
+                                },
+                            },
+                        },
+                    ],
+
+                    // الرسم البياني
+
+                    chartData: [
+                        {
+                            $match: {
+                                status: "paid",
+                            },
+                        },
+                        {
+                            $group: {
+                                _id: {
+                                    year: {
+                                        $year: "$createdAt",
+                                    },
+                                    month: {
+                                        $month: "$createdAt",
+                                    },
+                                },
+
+                                earnings: {
+                                    $sum: "$amount",
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+        ]),
+
+        // ============================
+        // أرباح المتجر
+        // ============================
+
+        Order.aggregate([
+            {
+                $match: {
+                    developer,
+                    status: "paid",
+                },
+            },
+            {
+                $facet: {
+
+                    // إحصائيات المبيعات
+
+                    paidStats: [
+                        {
+                            $group: {
+                                _id: null,
+
+                                totalSales: {
+                                    $sum: 1,
+                                },
+
+                                storeRevenue: {
+                                    $sum: "$amount",
+                                },
+
+                                todayEarnings: {
+                                    $sum: {
+                                        $cond: [
+                                            {
+                                                $gte: [
+                                                    "$createdAt",
+                                                    today,
+                                                ],
+                                            },
+                                            "$amount",
+                                            0,
+                                        ],
+                                    },
+                                },
+
+                                weeklyEarnings: {
+                                    $sum: {
+                                        $cond: [
+                                            {
+                                                $gte: [
+                                                    "$createdAt",
+                                                    week,
+                                                ],
+                                            },
+                                            "$amount",
+                                            0,
+                                        ],
+                                    },
+                                },
+
+                                monthlyEarnings: {
+                                    $sum: {
+                                        $cond: [
+                                            {
+                                                $gte: [
+                                                    "$createdAt",
+                                                    month,
+                                                ],
+                                            },
+                                            "$amount",
+                                            0,
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    ],
+
+                    // الرسم البياني
+
+                    chartData: [
+                        {
+                            $group: {
+                                _id: {
+                                    year: {
+                                        $year: "$createdAt",
+                                    },
+                                    month: {
+                                        $month: "$createdAt",
+                                    },
+                                },
+
+                                earnings: {
+                                    $sum: "$amount",
+                                },
+                            },
+                        },
+                    ],
+
+                    // أكثر المنتجات مبيعاً
+
+                    topSellingProducts: [
+                        {
+                            $group: {
+                                _id: "$project",
+
+                                sales: {
+                                    $sum: 1,
+                                },
+
+                                revenue: {
+                                    $sum: "$amount",
+                                },
+                            },
+                        },
+                        {
+                            $sort: {
+                                sales: -1,
+                            },
+                        },
+                        {
+                            $limit: 5,
+                        },
+                        {
+                            $lookup: {
+                                from: storeModel.collection.name,
+                                localField: "_id",
+                                foreignField: "_id",
+                                as: "project",
+                            },
+                        },
+                        {
+                            $unwind: "$project",
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                sales: 1,
+                                revenue: 1,
+                                projectName:
+                                    "$project.projectName",
+                                images:
+                                    "$project.images",
+                                category:
+                                    "$project.category",
+                            },
+                        },
+                    ],
+                },
+            },
+        ]),
+
+        // ============================
+        // السحوبات
+        // ============================
+
+        Withdraw.aggregate([
+            {
+                $match: {
+                    developer,
+                },
+            },
+            {
+                $group: {
+                    _id: "$status",
+
+                    total: {
+                        $sum: "$amount",
+                    },
+                },
+            },
+        ]),
+
+        // ============================
+        // المتاجر
+        // ============================
+
+        storeModel
+            .find({
+                owner: developer,
+            })
+            .select("_id")
+            .lean(),
+
+        // ============================
+        // آخر المشاريع
+        // ============================
+
+        projects
+            .find({
+                developertaked: developer,
+            })
+            .populate(
+                "owner",
+                "username profileImage"
+            )
+            .sort({
+                updatedAt: -1,
+            })
+            .limit(5)
+            .lean(),
+
+        // ============================
+        // آخر المبيعات
+        // ============================
+
+        Order
+            .find({
+                developer,
+                status: "paid",
+            })
+            .populate(
+                "buyer",
+                "username profileImage"
+            )
+            .populate(
+                "project",
+                "projectName"
+            )
+            .sort({
+                createdAt: -1,
+            })
+            .limit(5)
+            .lean(),
+
+        // ============================
+        // آخر المحادثات
+        // ============================
+
+        chat
+            .find({
+                developer,
+            })
+            .populate({
+                path: "lastMessage",
+                populate: {
+                    path: "sender",
+                    select: "username profileImage",
+                },
+            })
+            .populate(
+                "client",
+                "username profileImage"
+            )
+            .sort({
+                updatedAt: -1,
+            })
+            .limit(5)
+            .lean(),
+
+        // ============================
+        // المهام القادمة
+        // ============================
+
+        tasks
+            .find({
+                createdBy: developer,
+                status: {
+                    $ne: "completed",
+                },
+            })
+            .populate(
+                "project",
+                "projectName"
+            )
+            .sort({
+                dueDate: 1,
+            })
+            .limit(5)
+            .lean(),
+
+        // ============================
+        // التقييمات
+        // ============================
+
+        projectreviwe.aggregate([
+            {
+                $match: {
+                    developer,
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+
+                    averageRating: {
+                        $avg: "$rating",
+                    },
+
+                    totalReviews: {
+                        $sum: 1,
+                    },
+                },
+            },
+        ]),
+    ]);
+
+    // ============================
+    // إحصائيات المشاريع
+    // ============================
+
+    const projectStatsData =
+        projectStats[0] || {
+            total: 0,
+            completed: 0,
+            ongoing: 0,
+        };
+
+    // ============================
+    // بيانات المشاريع
+    // ============================
+
+    const freelance =
+        freelanceData[0] || {
+            paidStats: [],
+            pendingStats: [],
+            chartData: [],
+        };
+
+    const fStats =
+        freelance.paidStats[0] || {
+            totalEarnings: 0,
+            todayEarnings: 0,
+            weeklyEarnings: 0,
+            monthlyEarnings: 0,
+        };
+
+    const freelancePending =
+        freelance.pendingStats[0]
+            ?.pendingBalance || 0;
+
+    // ============================
+    // بيانات المتجر
+    // ============================
+
+    const store =
+        storeData[0] || {
+            paidStats: [],
+            chartData: [],
+            topSellingProducts: [],
+        };
+
+    const sStats =
+        store.paidStats[0] || {
+            totalSales: 0,
+            storeRevenue: 0,
+            todayEarnings: 0,
+            weeklyEarnings: 0,
+            monthlyEarnings: 0,
+        };
+
+    const topSellingProducts =
+        store.topSellingProducts || [];
+
+    // ============================
+    // السحوبات
+    // ============================
+
+    const totalWithdrawn =
+        withdrawSummary.find(
+            item => item._id === "completed"
+        )?.total || 0;
+
+    const pendingWithdraw =
+        withdrawSummary.find(
+            item => item._id === "pending"
+        )?.total || 0;
+
+    // ============================
+    // التقييمات
+    // ============================
+
+    const reviews =
+        reviewStats[0] || {
+            averageRating: 0,
+            totalReviews: 0,
+        };
+
+    // ============================
+    // الأرباح
+    // ============================
+
+    const freelanceRevenue =
+        fStats.totalEarnings;
+
+    const marketplaceRevenue =
+        sStats.storeRevenue;
+
+    const totalEarnings =
+        freelanceRevenue +
+        marketplaceRevenue;
+
+    const todayEarnings =
+        fStats.todayEarnings +
+        sStats.todayEarnings;
+
+    const weeklyEarnings =
+        fStats.weeklyEarnings +
+        sStats.weeklyEarnings;
+
+    const monthlyEarnings =
+        fStats.monthlyEarnings +
+        sStats.monthlyEarnings;
+
+    const pendingBalance =
+        freelancePending;
+
+    const availableBalance =
+        totalEarnings -
+        totalWithdrawn -
+        pendingWithdraw;
+
+    // ============================
+    // Chart
+    // ============================
+
+    const chartMap = new Map();
+
+    const addToChartMap = data => {
+
+        data.forEach(item => {
+
+            if (
+                !item._id?.year ||
+                !item._id?.month
+            ) {
+                return;
+            }
+
+            const key =
+                `${item._id.year}-${String(
+                    item._id.month
+                ).padStart(2, "0")}`;
+
+            chartMap.set(
+                key,
+                (chartMap.get(key) || 0) +
+                    item.earnings
+            );
+        });
+    };
+
+    addToChartMap(
+        freelance.chartData
+    );
+
+    addToChartMap(
+        store.chartData
+    );
+
+    const monthlyChart =
+        Array.from(
+            chartMap.entries()
+        )
+            .sort(([a], [b]) =>
+                a.localeCompare(b)
+            )
+            .slice(-6)
+            .map(
+                ([key, earnings]) => {
+
+                    const [, month] =
+                        key.split("-");
+
+                    return {
+                        month: Number(month),
+                        earnings,
+                    };
+                }
+            );
+
+    // ============================
+    // مشاهدات المتجر
+    // ============================
+
+    const storeIds =
+        stores.map(
+            store => store._id
+        );
+
+    const totalViews =
+        storeIds.length
+            ? await StoreView.countDocuments({
+                  project: {
+                      $in: storeIds,
+                  },
+              })
+            : 0;
+
+    // ============================
+    // معدل التحويل
+    // ============================
+
+    const conversionRate =
+        totalViews === 0
+            ? 0
+            : Number(
+                  (
+                      (sStats.totalSales /
+                          totalViews) *
+                      100
+                  ).toFixed(2)
+              );
+
+    // ============================
+    // Response
+    // ============================
+
+    return res.status(200).json({
+
+        success: true,
+
+        statistics: {
+
+            totalProjects:
+                projectStatsData.total,
+
+            completedProjects:
+                projectStatsData.completed,
+
+            ongoingProjects:
+                projectStatsData.ongoing,
+
+            totalProducts:
+                totalProducts,
+
+            totalOrders:
+                sStats.totalSales,
+
+            freelanceRevenue,
+
+            marketplaceRevenue,
+
+            totalEarnings,
+
+            availableBalance,
+
+            pendingBalance,
+
+            totalWithdrawn,
+
+            pendingWithdraw,
+
+            averageRating:
+                Number(
+                    (
+                        reviews.averageRating ||
+                        0
+                    ).toFixed(1)
+                ),
+
+            totalReviews:
+                reviews.totalReviews,
+
+            totalChats,
+
+            totalTasks,
+
+            totalViews,
+
+            conversionRate,
+        },
+
+        earnings: {
+
+            total:
+                totalEarnings,
+
+            today:
+                todayEarnings,
+
+            week:
+                weeklyEarnings,
+
+            month:
+                monthlyEarnings,
+        },
+
+        charts: {
+            monthlyChart,
+        },
+
+        recentProjects,
+
+        recentSales,
+
+        recentMessages,
+
+        upcomingTasks,
+
+        topSellingProducts,
     });
-
-  } catch (error) {
-    console.error("Dashboard Error: ", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-};
+});
 //طلب سحب
 export const requestwithdraw = asyncHandelr(async (req, res, next) => {
 

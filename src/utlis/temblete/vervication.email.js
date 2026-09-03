@@ -10,7 +10,236 @@ export const vervicaionemailtemplet = ({ code } = {}) => {
 
 
 
+export const broadcastEmailTemplate = ({
+    username = "صديقنا",
+    title = "",
+    message = "",
+} = {}) => {
 
+    const formattedMessage = message
+        .replace(/\n/g, "<br>");
+
+    return `
+<!DOCTYPE html>
+
+<html
+    lang="ar"
+    dir="rtl"
+>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>${title}</title>
+
+</head>
+
+<body
+    style="
+        margin:0;
+        padding:0;
+        background:#f4f5f7;
+        font-family:Arial, Tahoma, sans-serif;
+        direction:rtl;
+    "
+>
+
+    <table
+        width="100%"
+        cellpadding="0"
+        cellspacing="0"
+        border="0"
+        style="
+            background:#f4f5f7;
+            padding:40px 15px;
+        "
+    >
+
+        <tr>
+
+            <td align="center">
+
+                <table
+                    width="100%"
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    style="
+                        max-width:600px;
+                        background:#ffffff;
+                        border-radius:18px;
+                        overflow:hidden;
+                        box-shadow:0 8px 30px rgba(0,0,0,0.08);
+                    "
+                >
+
+                    <!-- HEADER -->
+
+                    <tr>
+
+                        <td
+                            style="
+                                background:#111111;
+                                padding:30px;
+                                text-align:center;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    font-size:28px;
+                                    font-weight:bold;
+                                    color:#ffffff;
+                                    letter-spacing:1px;
+                                "
+                            >
+                                Progzila
+                            </div>
+
+                            <div
+                                style="
+                                    margin-top:8px;
+                                    color:#bdbdbd;
+                                    font-size:13px;
+                                "
+                            >
+                                منصة المطورين والخدمات الرقمية
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+
+                    <!-- CONTENT -->
+
+                    <tr>
+
+                        <td
+                            style="
+                                padding:40px 35px;
+                                text-align:right;
+                                color:#222222;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    font-size:16px;
+                                    color:#555555;
+                                    margin-bottom:15px;
+                                "
+                            >
+                                مرحبًا ${username} 👋
+                            </div>
+
+
+                            <h1
+                                style="
+                                    margin:0 0 20px 0;
+                                    font-size:26px;
+                                    line-height:1.5;
+                                    color:#111111;
+                                "
+                            >
+                                ${title}
+                            </h1>
+
+
+                            <div
+                                style="
+                                    font-size:16px;
+                                    line-height:2;
+                                    color:#555555;
+                                    background:#f8f8f8;
+                                    padding:20px;
+                                    border-radius:12px;
+                                "
+                            >
+
+                                ${formattedMessage}
+
+                            </div>
+
+
+                            <div
+                                style="
+                                    margin-top:30px;
+                                    text-align:center;
+                                "
+                            >
+
+                                <a
+                                    href="https://progzila.com"
+                                    style="
+                                        display:inline-block;
+                                        background:#111111;
+                                        color:#ffffff;
+                                        text-decoration:none;
+                                        padding:13px 30px;
+                                        border-radius:10px;
+                                        font-size:15px;
+                                        font-weight:bold;
+                                    "
+                                >
+                                    زيارة Progzila
+                                </a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+
+                    <!-- FOOTER -->
+
+                    <tr>
+
+                        <td
+                            style="
+                                background:#fafafa;
+                                padding:25px;
+                                text-align:center;
+                                border-top:1px solid #eeeeee;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    color:#777777;
+                                    font-size:13px;
+                                    line-height:1.8;
+                                "
+                            >
+                                هذه الرسالة تم إرسالها من منصة Progzila
+                                <br>
+                                © ${new Date().getFullYear()} Progzila
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                </table>
+
+            </td>
+
+        </tr>
+
+    </table>
+
+</body>
+
+</html>
+`;
+};
 
 
 

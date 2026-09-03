@@ -28,7 +28,7 @@ import {
 } from "../../../utlis/multer/cloudflare.js";
 import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
 import { sendemail } from "../../../utlis/email/sendemail.js";
-import { acceptedEmail } from "../../../utlis/temblete/vervication.email.js";
+import { acceptedEmail, broadcastEmailTemplate } from "../../../utlis/temblete/vervication.email.js";
 import UserActivity from "../../../DB/models/UserActivity.js";
 import { generatehash } from "../../../utlis/security/hash.security.js";
 import { logadminActivity } from "../../../utlis/activity/adminactivity.js";
@@ -3758,3 +3758,336 @@ if (req.user.accses !== "SuperAdmin" && req.user.accses !== "FinanceAdmin") {
         );
 
     });
+
+export const getAllActivities =
+    asyncHandelr(async (req, res, next) => {
+
+        // ==========================================
+        // VALIDATION
+        // ==========================================
+if (req.user.accses !== "SuperAdmin" ) {
+  return next(
+    new Error("غير مصرح لك بتنفيذ هذا الاجراء", {
+      cause: 403, // الأفضل تخليها 403 (Forbidden) بدل 404 لأنها صلاحيات
+    })
+  );
+}
+ const recentActivity = await UserActivity.find()
+    .sort({
+      createdAt: -1,
+    })
+    .populate({
+      path: "user",
+      select: "username profileImage userType",
+    })
+    .lean();
+
+     
+        // ==========================================
+        // RESPONSE
+        // ==========================================
+
+        return successresponse(
+            res,
+            "تم جلب الانشطة ",
+            200,
+            {
+                recentActivity,
+            }
+        );
+
+    });
+
+    
+
+    //ارسال الايميل 
+
+    export const sendBroadcastEmail = asyncHandelr(
+    async (req, res, next) => {
+
+        const {
+            subject,
+            title,
+            message,
+            audience = "all",
+        } = req.body;
+
+        // ==========================================
+        // VALIDATION
+        // ==========================================
+
+        if (!subject?.trim()) {
+            return next(
+                new Error("عنوان البريد الإلكتروني مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        if (!title?.trim()) {
+            return next(
+                new Error("عنوان الرسالة مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        if (!message?.trim()) {
+            return next(
+                new Error("محتوى الرسالة مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        const allowedAudiences = [
+            "all",
+            "developers",
+            "clients",
+            "elite",
+        ];
+
+        if (!allowedAudiences.includes(audience)) {
+            return next(
+                new Error("الفئة المستهدفة غير صحيحة", {
+                    cause: 400,
+                })
+            );
+        }
+
+        // ==========================================
+        // تحديد المستخدمين
+        // ==========================================
+
+        const filter = {
+            deleted: { $ne: true },
+            isBlocked: { $ne: true },
+            email: { $exists: true, $ne: "" },
+        };
+
+        // مبرمجين
+        if (audience === "developers") {
+            filter.userType = "developer";
+        }
+
+        // عملاء
+        if (audience === "clients") {
+            filter.userType = "client";
+        }
+
+        // Elite
+        if (audience === "elite") {
+            filter.plan = "vip";
+        }
+
+        // ==========================================
+        // جلب المستخدمين
+        // ==========================================
+
+        const users = await Usermodel.find(filter)
+            .select("_id username email")
+            .lean();
+
+        if (!users.length) {
+            return next(
+                new Error(
+                    "لا يوجد مستخدمين في هذه الفئة",
+                    {
+                        cause: 404,
+                    }
+                )
+            );
+        }
+
+        // ==========================================
+        // تجهيز الإيميلات
+        // ==========================================
+
+        const emails = users
+            .map((user) => user.email?.trim())
+            .filter(Boolean);
+
+        if (!emails.length) {
+            return next(
+                new Error(
+                    "لا يوجد مستخدمين لديهم بريد إلكتروني صالح",
+                    {
+                        cause: 404,
+                    }
+                )
+            );
+        }
+
+        // ==========================================
+        // إنشاء القالب
+        // ==========================================
+
+        const html = broadcastEmailTemplate({
+            username: "صديقنا",
+            title: title.trim(),
+            message: message.trim(),
+        });
+
+        // ==========================================
+        // إرسال البريد الجماعي
+        // ==========================================
+
+        const result = await sendemail({
+            to: emails,
+            subject: subject.trim(),
+            text: message.trim(),
+            html,
+        });
+
+        // ==========================================
+        // Response
+        // ==========================================
+
+        return successresponse(
+            res,
+            "تم إرسال البريد الإلكتروني الجماعي بنجاح",
+            200,
+            {
+                sentCount: emails.length,
+                totalUsers: users.length,
+                audience,
+                subject: subject.trim(),
+                title: title.trim(),
+                message: message.trim(),
+                result,
+            }
+        );
+    }
+);
+export const sendEmailToUser = asyncHandelr(
+    async (req, res, next) => {
+
+        const {
+            userId,
+            subject,
+            title,
+            message,
+        } = req.body;
+
+        // ==========================================
+        // Validation
+        // ==========================================
+
+        if (!userId) {
+            return next(
+                new Error("معرف المستخدم مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        if (!subject?.trim()) {
+            return next(
+                new Error("عنوان البريد الإلكتروني مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        if (!title?.trim()) {
+            return next(
+                new Error("عنوان الرسالة مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        if (!message?.trim()) {
+            return next(
+                new Error("محتوى الرسالة مطلوب", {
+                    cause: 400,
+                })
+            );
+        }
+
+        // ==========================================
+        // البحث عن المستخدم
+        // ==========================================
+
+        const user = await Usermodel.findOne({
+            _id: userId,
+            deleted: { $ne: true },
+            isBlocked: { $ne: true },
+        })
+            .select("_id username email")
+            .lean();
+
+        if (!user) {
+            return next(
+                new Error(
+                    "المستخدم غير موجود أو محظور",
+                    {
+                        cause: 404,
+                    }
+                )
+            );
+        }
+
+        // ==========================================
+        // التأكد من وجود الإيميل
+        // ==========================================
+
+        if (!user.email?.trim()) {
+            return next(
+                new Error(
+                    "المستخدم لا يمتلك بريدًا إلكترونيًا",
+                    {
+                        cause: 400,
+                    }
+                )
+            );
+        }
+
+        // ==========================================
+        // إنشاء القالب
+        // ==========================================
+
+        const html = broadcastEmailTemplate({
+            username: user.username || "صديقنا",
+            title: title.trim(),
+            message: message.trim(),
+        });
+
+        // ==========================================
+        // إرسال البريد
+        // ==========================================
+
+        const result = await sendemail({
+            to: user.email,
+            subject: subject.trim(),
+            text: message.trim(),
+            html,
+        });
+
+        // ==========================================
+        // Response
+        // ==========================================
+
+        return successresponse(
+            res,
+            "تم إرسال البريد الإلكتروني للمستخدم بنجاح",
+            200,
+            {
+                sentCount: 1,
+
+                user: {
+                    _id: user._id,
+                    username: user.username,
+                    email: user.email,
+                },
+
+                subject: subject.trim(),
+                title: title.trim(),
+                message: message.trim(),
+
+                result,
+            }
+        );
+    }
+);
+

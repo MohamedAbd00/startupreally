@@ -805,9 +805,9 @@ const previousProjectCount = await previousprojects.countDocuments({
   owner: developer,
 });
 
-if (previousProjectCount < 3) {
+if (previousProjectCount < 1) {
   return next(
-    new Error("لازم تكون ناشر 3 مشاريع في سابقة الأعمال على الأقل", {
+    new Error("لازم تكون ناشر مشروع واحد في سابقة الأعمال على الأقل", {
       cause: 409,
     })
   );
@@ -1018,7 +1018,7 @@ export const getProjectRoom = asyncHandelr(async (req, res, next) => {
       description: project.Description,
       status: project.status,
       progress: project.progress,
-      budget: money.budget,
+      budget: money?.budget || 0,
       amount: project.amount,
       time: project.time,
       startDate: project.startDate,

@@ -1,7 +1,7 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import {  approveWithdrawal, createAdmin, deleteAdmin, deleteStoreProject, getAdminAuditLog, getAdminTeam, getAnalytics, getDashboard, getFinanceDashboard, getMarketplaceSales, getPendingWithdrawals, getProject, getProjects, getStoreProducts, getuser, getusers, getWithdrawalHistory, rejectWithdrawal, sendBroadcastNotification, sendNotificationToUser, toggleStoreProduct, updateAdmin } from "./service/admin.service.js";
+import {  approveWithdrawal, createAdmin, deleteAdmin, deleteStoreProject, getAdminAuditLog, getAdminTeam, getAllActivities, getAnalytics, getDashboard, getFinanceDashboard, getMarketplaceSales, getPendingWithdrawals, getProject, getProjects, getStoreProducts, getuser, getusers, getWithdrawalHistory, rejectWithdrawal, sendBroadcastEmail, sendBroadcastNotification, sendEmailToUser, sendNotificationToUser, toggleStoreProduct, updateAdmin } from "./service/admin.service.js";
 
 const router = Router()
 //جلب المستخدمين
@@ -75,6 +75,24 @@ router.post(
   "/approveWithdrawal/:withdrawalId",middlewere(),
   approveWithdrawal
 );
+router.get(
+  "/getAllActivities",middlewere(),
+  getAllActivities
+);
+
+router.post(
+    "/send-broadcast-email",
+    middlewere(),
+    sendBroadcastEmail
+);
+
+// إرسال إيميل لمستخدم واحد
+router.post(
+    "/send-email-user",
+    middlewere(),
+    sendEmailToUser
+);
+
 router.post(
   "/rejectWithdrawal/:withdrawalId",middlewere(),
   rejectWithdrawal

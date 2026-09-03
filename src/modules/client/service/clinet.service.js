@@ -876,7 +876,7 @@ const featuredDevelopers = await Usermodel.aggregate([
     $project: {
       username: 1,
       profileImage: 1,
-      rate: 1,
+      rating: 1,
       plan: 1,
       track:1,
       hourlyRate:1,

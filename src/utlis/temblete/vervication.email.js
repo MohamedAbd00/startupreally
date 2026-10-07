@@ -643,3 +643,182 @@ color:#9ca3af;
 </html>
 `;
 };
+
+
+
+
+
+export const emailtempletreviwe = (userName = "المستخدم") => {
+  return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حسابك قيد المراجعة | Progzila</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Segoe UI', Tahoma, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 15px;">
+<tr>
+<td align="center">
+
+<table width="620" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.06);">
+
+<!-- Header -->
+<tr>
+<td style="background:linear-gradient(135deg, #0f172a, #334155); text-align:center; padding:40px 20px;">
+<img
+src="https://res.cloudinary.com/dldmjxihf/image/upload/v1784406487/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_d2udqh.png"
+alt="Progzila Logo"
+width="180"
+style="display:block; margin:auto;"
+>
+</td>
+</tr>
+
+<!-- Content -->
+<tr>
+<td style="padding:50px 40px; text-align:center;">
+
+<h1 style="margin:0 0 15px 0; color:#0f172a; font-size:26px; font-weight:700;">
+مرحباً بك، ${userName} 👋
+</h1>
+
+<p style="color:#475569; line-height:1.8; font-size:16px; margin:0 0 35px 0;">
+يسعدنا انضمامك إلى مجتمع <strong>Progzila</strong>! لقد تم إنشاء حسابك بنجاح وهو الآن <strong>تحت المراجعة</strong> من قِبل فريقنا للتأكد من جاهزيته.
+</p>
+
+<!-- Status Box -->
+<div style="background-color:#fffbeb; border-radius:12px; padding:30px; margin:0 auto 35px auto; max-width:420px; border:1px solid #fef3c7; text-align:center;">
+<div style="font-size:36px; margin-bottom:10px;">⏳</div>
+<p style="margin:0 0 8px 0; color:#b45309; font-size:16px; font-weight:700;">
+الحساب قيد المراجعة
+</p>
+<p style="margin:0; color:#d97706; font-size:14px; line-height:1.6;">
+سنقوم بمراجعة بياناتك وإرسال إشعار لك بمجرد تفعيل حسابك بالكامل وقريباً جداً.
+</p>
+</div>
+
+<p style="color:#94a3b8; font-size:14px; margin:0; line-height:1.6;">
+إذا كان لديك أي استفسار، يمكنك التواصل معنا مباشرة.<br>
+شكراً لصبرك وانضمامك إلينا!
+</p>
+
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="background-color:#f8fafc; border-top:1px solid #f1f5f9; text-align:center; padding:25px;">
+<p style="margin:0; color:#94a3b8; font-size:13px;">
+&copy; ${new Date().getFullYear()} Progzila. جميع الحقوق محفوظة.
+</p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`;
+};
+
+
+
+export const clientInquiryTemplate = (clientName, projectTitle) => {
+  return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عميل محتمل جديد | Progzila</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Segoe UI', Tahoma, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 15px;">
+<tr>
+<td align="center">
+
+<table width="620" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.06);">
+
+<!-- Header -->
+<tr>
+<td style="background:linear-gradient(135deg, #0f172a, #334155); text-align:center; padding:40px 20px;">
+<img
+src="https://res.cloudinary.com/dldmjxihf/image/upload/v1784406487/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_d2udqh.png"
+alt="Progzila Logo"
+width="180"
+style="display:block; margin:auto;"
+>
+</td>
+</tr>
+
+<!-- Content -->
+<tr>
+<td style="padding:50px 40px; text-align:center;">
+
+<!-- Icon/Badge -->
+<div style="display:inline-block; background-color:#e0f2fe; color:#0284c7; width:64px; height:64px; line-height:64px; border-radius:50%; font-size:28px; margin-bottom:20px;">
+💬
+</div>
+
+<h1 style="margin:0 0 15px 0; color:#0f172a; font-size:26px; font-weight:700;">
+لديك عميل محتمل جديد! 🚀
+</h1>
+
+<p style="color:#475569; line-height:1.8; font-size:16px; margin:0 0 30px 0;">
+هناك عميل مهتم بالتحدث معك ومناقشة تفاصيل مشروعك <strong style="color:#0f172a;">${projectTitle || 'الخاص بك'}</strong>.
+</p>
+
+<!-- Details Box -->
+<div style="background-color:#f8fafc; border-radius:12px; padding:25px; margin:0 auto 35px auto; max-width:450px; border:1px solid #e2e8f0; text-align:right;">
+<p style="margin:0 0 10px 0; color:#64748b; font-size:14px;">
+<strong>اسم العميل:</strong> <span style="color:#0f172a;">${clientName || 'عميل Progzila'}</span>
+</p>
+<p style="margin:0; color:#64748b; font-size:14px;">
+<strong>الحالة:</strong> <span style="color:#10b981; font-weight:600;">جاهز للمحادثة وبانتظار ردك</span>
+</p>
+</div>
+
+<!-- Button -->
+<div style="margin-bottom:30px;">
+<a href="https://progzila.com/dashboard/developer/Discussion" 
+   style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; padding:15px 35px; border-radius:10px; font-size:16px; font-weight:600; text-decoration:none; display:inline-block; box-shadow:0 4px 12px rgba(2,132,199,0.3);">
+بدء المحادثة الآن
+</a>
+</div>
+
+<p style="color:#94a3b8; font-size:13px; margin:0;">
+إذا واجهتك أي مشكلة، يمكنك الانتقال المباشر للوحة التحكم ومتابعة قسم المحادثات.
+</p>
+
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="background-color:#f8fafc; border-top:1px solid #f1f5f9; text-align:center; padding:25px;">
+<p style="margin:0; color:#94a3b8; font-size:13px;">
+&copy; ${new Date().getFullYear()} Progzila. جميع الحقوق محفوظة.
+</p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`;
+};

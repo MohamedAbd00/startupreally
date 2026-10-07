@@ -8,6 +8,7 @@ import chatsupport from "../../DB/models/chatsupport.js";
 import {
   verifyPaymentAppToken,
 } from "../../utlis/security/Token.security.js";
+import chatdiscussion from "../../DB/models/chatdiscussion.js";
 const onlineUsers = new Map();
 const extractId = (data, key = "userId") => {
   if (!data) return null;
@@ -486,6 +487,31 @@ socket.on("delete-all-notifications", async (data) => {
 
 
 
+  //==============================
+    //chat join support
+    //==============================
+     socket.on("join-chat-Discussion", async (chatId) => {
+      try {
+        if (!chatId || !socket.userId) return;
+
+        const chat = await chatdiscussion.findById(chatId);
+
+        if (!chat) return;
+
+        if (
+          chat.client.toString() !== socket.userId &&
+          chat.developer.toString() !== socket.userId
+        ) {
+          return;
+        }
+
+        socket.join(chatId);
+
+        console.log(`Joined Chat : ${chatId}`);
+      } catch (err) {
+        console.log(err);
+      }
+    });
 
     //==============================
     //chat join support
@@ -635,6 +661,133 @@ socket.on("delete-all-notifications", async (data) => {
       });
   } catch (err) {
     console.log(err);
+  }
+});
+
+socket.on("send-message-vip", async (data) => {
+  try {
+    const {
+      chatId,
+      sender,
+      text,
+      file = "",
+      fileType = "",
+    } = data;
+
+    if (!chatId || (!text && !file)) return;
+
+    // بيانات المرسل
+    const currentUser = await Users.findById(sender).select(
+      "username profileImage isOnline plan userType"
+    );
+
+    if (!currentUser) {
+      socket.emit("message-error", {
+        message: "المستخدم غير موجود",
+        status: 404,
+      });
+      return;
+    }
+
+    // المبرمج لازم يكون VIP
+    if (
+      currentUser.userType === "developer" &&
+      currentUser.plan !== "vip"
+    ) {
+      socket.emit("message-error", {
+        message: "اشترك في الباقة VIP لإرسال الرسائل",
+        status: 403,
+      });
+      return;
+    }
+
+    // العميل يقدر يرسل عادي
+    // client لا يحتاج VIP
+
+    // رسالة مؤقتة للعرض الفوري
+    const tempMessageId = "msg-" + Date.now();
+
+    const messagePayload = {
+      _id: tempMessageId,
+      chat: chatId,
+      sender: {
+        _id: currentUser._id,
+        username: currentUser.username,
+        profileImage: currentUser.profileImage,
+        isOnline: currentUser.isOnline,
+      },
+      text,
+      file,
+      fileType,
+      delivered: true,
+      seen: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    // إرسال الرسالة فوراً للطرفين
+    io.to(chatId).emit("receive-message", messagePayload);
+
+    // الحفظ في قاعدة البيانات
+    Messages.create({
+      chat: chatId,
+      sender,
+      text,
+      file,
+      fileType,
+      delivered: true,
+      seen: false,
+    })
+      .then(async (savedMessage) => {
+        // تحديث آخر رسالة بالشات
+        await Chats.findByIdAndUpdate(chatId, {
+          lastMessage: savedMessage._id,
+          lastActivity: new Date(),
+        });
+
+        // جلب الشات لمعرفة المستقبل
+        const chat = await Chats.findById(chatId);
+
+        if (!chat) return;
+
+        const receiver =
+          chat.client.toString() === sender
+            ? chat.developer.toString()
+            : chat.client.toString();
+
+        // إشعار الرسالة
+        await createNotification({
+          receiver,
+          sender,
+          type: "message",
+          title: "رسالة جديدة",
+          body: text || "قام بإرسال ملف",
+          chat: chatId,
+          metadata: {
+            messageId: savedMessage._id,
+          },
+        });
+
+        // لو المستقبل أونلاين
+        if (onlineUsers.has(receiver)) {
+          io.to(onlineUsers.get(receiver)).emit(
+            "new-message-notification",
+            {
+              ...messagePayload,
+              _id: savedMessage._id,
+            }
+          );
+        }
+      })
+      .catch((err) => {
+        console.log("DB Error:", err);
+      });
+  } catch (err) {
+    console.log("Socket Error:", err);
+
+    socket.emit("message-error", {
+      message: err.message || "حدث خطأ أثناء إرسال الرسالة",
+      status: err.status || 500,
+    });
   }
 });
     // ==========================

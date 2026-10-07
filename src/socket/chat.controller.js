@@ -7,7 +7,9 @@ import {
   getMessages,
   getProjectChat,
   getsupportChat,
-  getMyChatsupport
+  getMyChatsupport,
+  getDiscussionChat,
+  getMyChatDiscussion
 } from "./service/chat.js";
 
 const router = Router();
@@ -48,6 +50,20 @@ router.get(
   "/support/:projectId",
   middlewere(),
   getsupportChat
+);
+
+//جلب محادثات  المناقشة الخاص بالمبرج
+router.get(
+  "/getMyChatDiscussion",
+  middlewere(),
+  getMyChatDiscussion
+);
+//جلب شات المناقشة
+
+router.get(
+  "/getDiscussionChat/:projectId",
+  middlewere(),
+  getDiscussionChat
 );
 
 

@@ -1,5 +1,5 @@
 import Router from "express"
-import { singupclint, singupdev } from "./service/register.service.js"
+import { createDevAccounts, singupclint, singupdev } from "./service/register.service.js"
 import { changePassword, changePasswordemail, completeProfile, login, loginadmin, me, resendverifyemail, verifyemail } from "./service/login.service.js"
 import { upload   } from "../../utlis/multer/cloud.multer.js";
 import { middlewere } from "../../middlewere/middlewere.js";
@@ -40,7 +40,10 @@ router.post(
   loginadmin
 );
 
-
+router.post(
+  "/developers/bulk",
+  createDevAccounts
+);
 
 router.put(
   "/complete-profile",

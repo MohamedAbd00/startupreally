@@ -4091,3 +4091,344 @@ export const sendEmailToUser = asyncHandelr(
     }
 );
 
+
+
+export const createClientAndProject = asyncHandelr(
+  async (req, res, next) => {
+
+    const { data } = req.body;
+
+    // =========================
+    // Validate Data
+    // =========================
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return next(
+        new Error("يجب إرسال قائمة العملاء والمشاريع", {
+          cause: 400,
+        })
+      );
+    }
+
+    // Maximum 10
+    if (data.length > 10) {
+      return next(
+        new Error("يمكن إنشاء 10 عملاء ومشاريع فقط في الطلب الواحد", {
+          cause: 400,
+        })
+      );
+    }
+
+    const createdData = [];
+
+    // =========================
+    // Get Developers Once
+    // =========================
+
+    const developers = await Usermodel.find({
+      userType: "developer",
+    }).select("email username");
+
+    // =========================
+    // Create Clients + Projects
+    // =========================
+
+    for (const item of data) {
+
+      const {
+        client,
+        project,
+      } = item || {};
+
+      // =========================
+      // Client Data
+      // =========================
+
+      const {
+        name,
+        email,
+        companyName,
+      } = client || {};
+
+      if (!name || !email || !companyName) {
+        return next(
+          new Error(
+            `بيانات العميل غير مكتملة للعميل: ${email || "غير معروف"}`,
+            {
+              cause: 400,
+            }
+          )
+        );
+      }
+
+      // =========================
+      // Project Data
+      // =========================
+
+      const {
+        name: projectName,
+        desctption,
+        type,
+        skills,
+        time,
+        budget,
+        deadline,
+        currency,
+        profileImage,
+      } = project || {};
+
+      if (
+        !projectName ||
+        !desctption ||
+        !type ||
+        !skills ||
+        !time ||
+        !budget ||
+        !deadline ||
+        !currency
+      ) {
+        return next(
+          new Error(
+            `بيانات المشروع غير مكتملة للعميل: ${email}`,
+            {
+              cause: 400,
+            }
+          )
+        );
+      }
+
+      // =========================
+      // Check Existing Client
+      // =========================
+
+      const existingUser = await Usermodel.findOne({
+        email,
+      });
+
+      if (existingUser) {
+        return next(
+          new Error(`الإيميل موجود بالفعل: ${email}`, {
+            cause: 400,
+          })
+        );
+      }
+
+      // =========================
+      // Create Client
+      // =========================
+
+      const user = await Usermodel.create({
+        username: name,
+        email,
+        userType: "client",
+        companyName,
+        profileImage: profileImage,
+      });
+
+      // =========================
+      // Create Project
+      // =========================
+
+      const ptoject = await projects.create({
+        owner: user._id,
+        currency,
+        category: type,
+        projectName,
+        Description: desctption,
+        skills,
+        time,
+        budget,
+        deadline,
+      });
+
+      // =========================
+      // Save Created Data
+      // =========================
+
+      createdData.push({
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          companyName: user.companyName,
+          userType: user.userType,
+          profileImage: user.profileImage,
+        },
+        project: ptoject,
+      });
+
+      // =========================
+      // Send Emails
+      // =========================
+
+      setImmediate(async () => {
+
+        try {
+
+          await Promise.all(
+            developers.map((developer) =>
+              sendemail({
+                to: developer.email,
+                subject: "🚀 مشروع جديد على Progzila",
+
+                html: `
+                  <div style="
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 40px 30px;
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    background: #f9fafb;
+                    border-radius: 24px;
+                    border: 1px solid #e5e7eb;
+                  ">
+
+                    <div style="
+                      display: flex;
+                      align-items: center;
+                      gap: 10px;
+                      margin-bottom: 28px;
+                    ">
+
+                      <span style="
+                        font-size: 28px;
+                        background: #eef2ff;
+                        padding: 6px 12px;
+                        border-radius: 40px;
+                      ">
+                        🚀
+                      </span>
+
+                      <h2 style="
+                        margin: 0;
+                        font-size: 24px;
+                        color: #111827;
+                      ">
+                        تم نشر مشروع جديد
+                      </h2>
+
+                    </div>
+
+                    <p style="
+                      font-size: 16px;
+                      color: #1f2937;
+                    ">
+                      مرحباً
+                      <strong>${developer.username}</strong>
+                      👋
+                    </p>
+
+                    <p style="
+                      font-size: 15px;
+                      color: #4b5563;
+                      line-height: 1.6;
+                    ">
+                      تم نشر مشروع جديد يمكنك التقديم عليه الآن.
+                    </p>
+
+                    <hr style="
+                      border: none;
+                      border-top: 2px solid #e5e7eb;
+                      margin: 28px 0;
+                    ">
+
+                    <div style="
+                      background: #ffffff;
+                      padding: 24px 28px;
+                      border-radius: 16px;
+                      border: 1px solid #e5e7eb;
+                    ">
+
+                      <h3 style="
+                        margin: 0 0 8px 0;
+                        font-size: 20px;
+                        color: #111827;
+                      ">
+                        ${ptoject.projectName}
+                      </h3>
+
+                      <p style="
+                        font-size: 15px;
+                        color: #4b5563;
+                        line-height: 1.7;
+                      ">
+                        ${ptoject.Description}
+                      </p>
+
+                      <a
+                        href="https://progzila.com/dashboard/developer/project-proposals"
+                        style="
+                          display: inline-block;
+                          padding: 12px 28px;
+                          background: #4f46e5;
+                          color: #ffffff;
+                          font-weight: 600;
+                          font-size: 15px;
+                          text-decoration: none;
+                          border-radius: 40px;
+                        "
+                      >
+                        👀 مشاهدة المشروع
+                      </a>
+
+                    </div>
+
+                    <div style="
+                      font-size: 13px;
+                      color: #9ca3af;
+                      text-align: center;
+                      border-top: 1px solid #e5e7eb;
+                      padding-top: 22px;
+                      margin-top: 30px;
+                    ">
+
+                      <strong>Progzila Team</strong>
+
+                      <span style="
+                        margin: 0 6px;
+                      ">
+                        •
+                      </span>
+
+                      جميع الحقوق محفوظة
+
+                    </div>
+
+                  </div>
+                `,
+              })
+            )
+          );
+
+          console.log(
+            `✅ Emails Sent For Project: ${ptoject.projectName}`
+          );
+
+        } catch (err) {
+
+          console.error(
+            "Project Email Error:",
+            err
+          );
+
+        }
+
+      });
+
+    }
+
+    // =========================
+    // Response
+    // =========================
+
+    return successresponse(
+      res,
+      `تم إنشاء ${createdData.length} عملاء ومشاريع بنجاح`,
+      201,
+      {
+        count: createdData.length,
+        data: createdData,
+      }
+    );
+
+  }
+);

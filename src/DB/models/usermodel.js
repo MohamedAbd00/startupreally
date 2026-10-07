@@ -101,8 +101,17 @@ compleytprofile: {
         type: Boolean,
         default: false
     },
+   status: {
+        type: String,
+        enum: ["Under review", "approval", "rejected"],
+        default:"Under review"
+    },
 
 
+  whatsapp: {
+        type: String,
+        
+    },
     // 👨‍💻 بيانات المبرمج
     userType: {
         type: String,

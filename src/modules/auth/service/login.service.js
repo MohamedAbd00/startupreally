@@ -9,6 +9,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import passport from "../service/google.service.js"; // المسار حسب مشروعك
 import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
 import { logadminActivity } from "../../../utlis/activity/adminactivity.js";
+import { emailtempletreviwe } from "../../../utlis/temblete/vervication.email.js";
 //تسجيل الدخول
 export const login = asyncHandelr(async(req , res , next)=>{
     const {email , password} = req.body
@@ -29,7 +30,7 @@ export const login = asyncHandelr(async(req , res , next)=>{
     if(users.deleted == true){
               return next(new Error("لقد قمت بحذف الحساب", { cause: 400 }));
     }
-    
+  
      const ismatch = await comparehash({
         planText: password ,
         valuehash: users.password
@@ -52,7 +53,12 @@ export const login = asyncHandelr(async(req , res , next)=>{
          return next(new Error("اكمل ملف العميل", { cause: 400 }));
     }
     
-    
+      if (users.status == "Under review") {
+        return next(new Error("الحساب تحت المراجعة", { cause: 400 }));
+    }
+    if (users.status == "rejected") {
+        return next(new Error("لقد تم رفض هذا الحساب", { cause: 400 }));
+    }
          const tokens = generatetoken({
         payload:{id: users._id}
     })
@@ -87,7 +93,12 @@ export const verifyemail = asyncHandelr(async(req , res , next)=>{
 
     }
     await Usermodel.updateOne({email} , {isConfirmed: true, code: ""})
-
+await sendemail({
+    to: email,
+    subject: "Your account is under review.",
+    html:emailtempletreviwe(users.username)
+    
+})
         return successresponse(
         res,
         "تم تفعيل الاكونت بنجاح",

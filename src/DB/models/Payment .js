@@ -25,11 +25,7 @@ const PaymentSchema = new Schema(
     },
 
 
-    transferNumber: {
-      type: String,
-           required: true,
 
-    },
 amount: {
       type: Number,
            required: true,
@@ -44,13 +40,23 @@ amount: {
 
     },
     
-    typewallet: {
-      type: String,
-      enum: ["vodafone_cash", "etisalat_cash", "instapay","orange_cash"],
-      default: "vodafone_cash",
-            required: true,
+  
+transferNumber: {
+  type: String,
+  required: function () {
+    return this.typewallet != null;
+  },
+},
 
-    },
+typewallet: {
+  type: String,
+  enum: ["vodafone_cash", "etisalat_cash", "instapay", "orange_cash"],
+  required: function () {
+    return this.typepayment !== "freelance" ||
+      this.transferNumber != null;
+  },
+},
+
      typepayment: {
       type: String,
       enum: ["project", "Subscription","freelance"],

@@ -1,7 +1,7 @@
 import Router from "express"
 
 import { middlewere } from "../../middlewere/middlewere.js";
-import {  approveWithdrawal, createAdmin, createClientAndProject, deleteAdmin, deleteStoreProject, getAdminAuditLog, getAdminTeam, getAllActivities, getAnalytics, getDashboard, getFinanceDashboard, getMarketplaceSales, getPendingWithdrawals, getProject, getProjects, getStoreProducts, getuser, getusers, getWithdrawalHistory, rejectWithdrawal, sendBroadcastEmail, sendBroadcastNotification, sendEmailToUser, sendNotificationToUser, toggleStoreProduct, updateAdmin } from "./service/admin.service.js";
+import {  approveVerification, approveWithdrawal, createAdmin, createClientAndProject, deleteAdmin, deleteStoreProject, getAdminAuditLog, getAdminTeam, getAllActivities, getAnalytics, getDashboard, getFinanceDashboard, getMarketplaceSales, getPendingVerifications, getPendingWithdrawals, getProject, getProjects, getStoreProducts, getuser, getusers, getWithdrawalHistory, rejectVerification, rejectWithdrawal, sendBroadcastEmail, sendBroadcastNotification, sendEmailToUser, sendNotificationToUser, toggleStoreProduct, updateAdmin } from "./service/admin.service.js";
 
 const router = Router()
 //جلب المستخدمين
@@ -101,8 +101,13 @@ router.post(
   rejectWithdrawal
 );
 
+router.get(
+  "/getPendingVerifications",middlewere(),
+  getPendingVerifications
+);
+router.patch("/:id/approve", middlewere(), approveVerification);
 
-
+router.patch("/:id/reject", middlewere(), rejectVerification);
 
 
 

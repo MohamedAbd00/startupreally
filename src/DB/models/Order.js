@@ -41,19 +41,32 @@ delivered: {
       enum: ["pending", "paid", "cancelled", "refunded"],
       default: "pending",
     },
+paymentMethod: {
+  type: String,
+  enum: ["manual", "xpay"],
+  default: "manual",
+  required: true,
+},
 
-   phone :{
-     type: String,
-     required: true,
+phone: {
+  type: String,
+  required: function () {
+    return this.paymentMethod === "manual";
+  },
+},
 
-   },
-     typewallet: {
-      type: String,
-      enum: ["vodafone_cash", "etisalat_cash", "instapay","orange_cash"],
-      
-            required: true,
-
-    },
+typewallet: {
+  type: String,
+  enum: [
+    "vodafone_cash",
+    "etisalat_cash",
+    "instapay",
+    "orange_cash",
+  ],
+  required: function () {
+    return this.paymentMethod === "manual";
+  },
+},
     name :{
      type: String,
      required: true,

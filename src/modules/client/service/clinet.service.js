@@ -23,7 +23,8 @@ import { acceptedEmail } from "../../../utlis/temblete/vervication.email.js";
 import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
 import { createPaymentRequest, createPaymentRequestService } from "../../payment/service/payment.service.js";
 import previousprojectsModel from "../../../DB/models/previousprojects.js";
-
+import { createXPaySession } from "../../subscription/service/xpay.service.js";
+import mongoose from "mongoose";
 //تسجيل الدخول
 
 //استكمال البيانات
@@ -469,188 +470,159 @@ await logUserActivity({
 });
 
 //اضافة دفعة لمشروع معين
+
+
 export const Addbatch = asyncHandelr(async (req, res, next) => {
-
   const userId = req.user._id;
-
   const { projectid } = req.params;
+  const { name, amount, type, phone, paymentMethod } = req.body;
 
-  const {name , amount , type , phone} = req.body;
+  const selectedPaymentMethod = paymentMethod || "manual";
+  const numericAmount = Number(amount);
 
-  if(!userId || !projectid || !name || !amount || !type || !phone ){
-
+  if (
+    !userId ||
+    !projectid ||
+    amount == null ||
+    !Number.isFinite(numericAmount) ||
+    numericAmount <= 0 ||
+    !["manual", "xpay"].includes(selectedPaymentMethod)
+  ) {
     return next(
-      new Error("جميع الحقول مطلوبة", {
-        cause: 404
+      new Error("جميع الحقول مطلوبة والبيانات المالية غير صحيحة", {
+        cause: 400,
       })
     );
+  }
 
+  if (
+    selectedPaymentMethod === "manual" &&
+    (!name?.trim() || !type || !phone?.trim())
+  ) {
+    return next(
+      new Error("الاسم ونوع المحفظة ورقم التحويل مطلوبة للدفع اليدوي", {
+        cause: 400,
+      })
+    );
   }
 
   const project = await projects
     .findById(projectid)
-    .populate(
-      "developertaked",
-      "notificationSettings"
-    );
+    .populate("developertaked", "notificationSettings");
 
-  if(!project){
-
-    return next(
-      new Error("المشروع غير موجود", {
-        cause: 404
-      })
-    );
-
+  if (!project) {
+    return next(new Error("المشروع غير موجود", { cause: 404 }));
   }
 
   if (project.clientApproved) {
-
     return next(
-
-      new Error(
-        "تم الانتهاء من المشروع لايمكنك التعديل",
-        {
-          cause: 404
-        }
-      )
-
+      new Error("تم الانتهاء من المشروع لايمكنك التعديل", {
+        cause: 400,
+      })
     );
-
   }
 
   if (project.owner.toString() !== userId.toString()) {
-
-    return next(
-
-      new Error(
-        "غير مصرح لك",
-        {
-          cause: 403
-        }
-      )
-
-    );
-
+    return next(new Error("غير مصرح لك", { cause: 403 }));
   }
- // ==========================================
-  // OLD PAYMENT
-  // ==========================================
 
-  const donePayment = await Payment.create({
-
-    project: projectid,
-
-    createdBy : userId,
-
-    namePayment: name,
-typewallet: type,
-    amount,
-
-    transferNumber :phone,
-
-    typepayment: "freelance"
-
-  });
-
-
-  // ==========================================
-  // NEW PAYMENT REQUEST
-  // ==========================================
+  // إنشاء طلب الدفع الموجود، دون إنشاء سجل إضافي من أجل XPay.
+const donePayment = await Payment.create({
+  project: projectid,
+  createdBy: userId,
+  namePayment: name?.trim() || "Freelance payment",
+  ...(selectedPaymentMethod === "manual"
+    ? {
+        typewallet: type,
+        transferNumber: phone.trim(),
+      }
+    : {}),
+  amount: numericAmount,
+  typepayment: "freelance",
+  status: "pending",
+});
 
   const io = req.app.get("io");
 
-  const paymentRequest =
-    await createPaymentRequestService({
-
-      userId: userId,
-  project: donePayment._id,
-      orderId: null,
-
-      type: "freelance",
-
-      amount: amount,
-
-      senderPhone: phone,
-
-      io: io,
-
-    
-
+  if (selectedPaymentMethod === "xpay") {
+    const xpayResult = await createXPaySession({
+      userId,
+      paymentId: donePayment._id,
+      purpose: "freelance",
+      amount: numericAmount,
     });
 
+    await createProjectActivity({
+      project: projectid,
+      user: userId,
+      action: "payment_added",
+      targetType: "payment",
+      targetId: donePayment._id,
+      metadata: {
+        taskTitle: "payment_added",
+        amount: numericAmount,
+        paymentMethod: "xpay",
+      },
+    });
 
- 
+    return successresponse(
+      res,
+      "تم إنشاء رابط الدفع بنجاح",
+      200,
+      {
+        payment: donePayment,
+        checkoutUrl: xpayResult.checkoutUrl,
+        transactionId: xpayResult.transactionId,
+      }
+    );
+  }
 
-  await createProjectActivity({
-
-    project: projectid,
-
-    user: userId,
-
-    action: "payment_added",
-
-    targetType: "payment",
-
-    targetId: donePayment._id,
-
-    metadata: {
-
-      taskTitle: "payment_added",
-
-      amount
-
-    },
-
+  await createPaymentRequestService({
+    userId,
+    project: donePayment._id,
+    orderId: null,
+    type: "freelance",
+    amount: numericAmount,
+    senderPhone: phone,
+    io,
   });
 
+  await createProjectActivity({
+    project: projectid,
+    user: userId,
+    action: "payment_added",
+    targetType: "payment",
+    targetId: donePayment._id,
+    metadata: {
+      taskTitle: "payment_added",
+      amount: numericAmount,
+    },
+  });
 
-  if(project.developertaked.notificationSettings.payments == true){
-
+  if (project.developertaked?.notificationSettings?.payments === true) {
     await createNotification({
-
-      receiver:project.developertaked ,
-
-      sender:userId ,
-
+      receiver: project.developertaked,
+      sender: userId,
       type: "payment",
-
-      title: "لقد تم اضافة دفعة جديدة وهي الان تحت المراجعة",
-
-      body: amount,
-
+      title: "لقد تم إضافة دفعة جديدة وهي الآن تحت المراجعة",
+      body: String(numericAmount),
       project: projectid,
-
     });
 
     await logUserActivity({
-
-      userId: req.user._id,
-
+      userId,
       type: "payment_completed",
-
       metadata: {
-
         paymentId: donePayment._id,
-
-        amount: amount,
-
-        type: type,
-
+        amount: numericAmount,
+        type,
       },
-
     });
-
   }
 
-
-  return successresponse(
-    res,
-    "تم ارسال طلب الدفع",
-    200
-  );
-
+  return successresponse(res, "تم ارسال طلب الدفع", 200);
 });
+
 
 // إضافة هدف جديدة
 export const addObjective = asyncHandelr(async (req, res, next) => {
@@ -1228,67 +1200,197 @@ const views = await ProductViews.countDocuments()
 });
 
 //شراء مشروع
+
+
+
 export const buyproject = asyncHandelr(async (req, res, next) => {
-  const id = req.user._id
-const {projectid , phone , typewallet , name  , amount , type} = req.body
- const project = await storeModel.findById(projectid);
-if(!project){
-   return next(      new Error("المشروع غير موجود", { cause: 404 }))
+  const id = req.user._id;
 
-}
-if(req.user.userType == "developer"){
- return next(  new Error("يمكن فقط للعميل شراء  المشاريع", { cause: 404 }))
-}
-const buyed = await Order.findOne({project:projectid})
-if(buyed){
-   return next(      new Error("لقد اشتريت المشروع من قبل", { cause: 404 }))
+  const {
+    projectid,
+    phone,
+    typewallet,
+    name,
+    amount,
+    type,
+    paymentMethod = "manual",
+  } = req.body;
 
-}
-
-const done = await Order.create({
-  buyer: id ,
-  developer : project.owner,
-  project :projectid,
-  typewallet,
-  phone,
-  name , 
-package : type,
- amount
-})
-const io = req.app.get("io");
-
-await createPaymentRequestService({
-  userId: req.user._id,
-  orderId: done._id,
-  type: done.typewallet,
-  amount: done.amount,
-  senderPhone: done.phone,
-  project: null ,
-  io,
-});
-await storeModel.findByIdAndUpdate(
-  projectid,
-  {
-    $inc: { salesCount: 1 },
+  // التحقق من طريقة الدفع
+  if (!["manual", "xpay"].includes(paymentMethod)) {
+    return next(
+      new Error("طريقة الدفع غير صحيحة", { cause: 400 })
+    );
   }
-);
 
-await logUserActivity({
-  userId: req.user._id,
-  type: "project_buy",
-  metadata: {
-    projectId: projectid,
-  },
-});
+  // التحقق من البيانات الأساسية
+  if (
+    !projectid ||
+    !type ||
+    amount === undefined ||
+    amount === null ||
+    !Number.isFinite(Number(amount)) ||
+    Number(amount) <= 0 ||
+    (paymentMethod === "manual" && !name?.trim())
+  ) {
+    return next(
+      new Error("جميع الحقول المطلوبة والبيانات المالية غير صحيحة", {
+        cause: 400,
+      })
+    );
+  }
+
+  // التحقق من بيانات المحفظة للدفع اليدوي فقط
+  if (paymentMethod === "manual") {
+    if (!phone || !typewallet) {
+      return next(
+        new Error("رقم الهاتف ونوع المحفظة مطلوبان للدفع اليدوي", {
+          cause: 400,
+        })
+      );
+    }
+
+    if (
+      ![
+        "vodafone_cash",
+        "etisalat_cash",
+        "instapay",
+        "orange_cash",
+      ].includes(typewallet)
+    ) {
+      return next(
+        new Error("نوع المحفظة غير صحيح", { cause: 400 })
+      );
+    }
+  }
+
+  // التحقق من صحة معرّف المشروع
+  if (!mongoose.isValidObjectId(projectid)) {
+    return next(
+      new Error("معرّف المشروع غير صحيح", { cause: 400 })
+    );
+  }
+
+  // التحقق من وجود المشروع
+  const project = await storeModel.findById(projectid);
+
+  if (!project) {
+    return next(
+      new Error("المشروع غير موجود", { cause: 404 })
+    );
+  }
+
+  // منع المطور من شراء المشاريع
+  if (req.user.userType === "developer") {
+    return next(
+      new Error("يمكن فقط للعميل شراء المشاريع", { cause: 403 })
+    );
+  }
+
+  // منع شراء المشروع نفسه أكثر من مرة
+  const buyed = await Order.findOne({
+    project: projectid,
+    buyer: id,
+    status: { $ne: "cancelled" },
+  });
+
+  if (buyed) {
+    return next(
+      new Error("لقد اشتريت المشروع من قبل", { cause: 400 })
+    );
+  }
+
+  // إنشاء الطلب
+  const done = await Order.create({
+    buyer: id,
+    developer: project.owner,
+    project: projectid,
+    package: type,
+    amount: Number(amount),
+    name:
+      paymentMethod === "xpay"
+        ? project.projectName
+        : name.trim(),
+    paymentMethod,
+    ...(paymentMethod === "manual"
+      ? {
+          phone,
+          typewallet,
+        }
+      : {}),
+  });
+
+  // الدفع عبر XPay
+  if (paymentMethod === "xpay") {
+    try {
+      const xpayResult = await createXPaySession({
+        userId: id,
+        orderId: done._id,
+        purpose: "project_purchase",
+        amount: Number(amount),
+      });
+
+      if (!xpayResult?.checkoutUrl) {
+        throw new Error("لم يتم استلام رابط الدفع من XPay");
+      }
+
+      return successresponse(
+        res,
+        "تم إنشاء طلب الشراء، أكمل الدفع عبر XPay",
+        200,
+        {
+          done,
+          checkoutUrl: xpayResult.checkoutUrl,
+          transactionId: xpayResult.transactionId,
+        }
+      );
+    } catch (error) {
+      // إلغاء الطلب إذا فشل إنشاء جلسة الدفع
+      await Order.findByIdAndUpdate(done._id, {
+        status: "cancelled",
+      });
+
+      throw error;
+    }
+  }
+
+  // الدفع اليدوي بالنظام الحالي
+  const io = req.app.get("io");
+
+  await createPaymentRequestService({
+    userId: id,
+    orderId: done._id,
+    type: done.typewallet,
+    amount: done.amount,
+    senderPhone: done.phone,
+    io,
+  });
+
+  // الحفاظ على سلوك المبيعات الحالي للدفع اليدوي
+  await storeModel.findByIdAndUpdate(projectid, {
+    $inc: { salesCount: 1 },
+  });
+
+  await logUserActivity({
+    userId: id,
+    type: "project_buy",
+    metadata: {
+      projectId: projectid,
+      orderId: done._id,
+      paymentMethod,
+    },
+  });
+
   return successresponse(
     res,
-    "تم تفديم طلب الشراء بنجاح",
+    "تم تقديم طلب الشراء بنجاح",
     200,
- {
- done
-}
+    { done }
   );
 });
+
+
+
 //جلب المشاريع الي اشترها العميل 
 export const getmyprojectbuyed = asyncHandelr(async (req, res, next) => {
   const id = req.user._id

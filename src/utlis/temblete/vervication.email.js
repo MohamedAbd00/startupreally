@@ -822,3 +822,255 @@ style="display:block; margin:auto;"
 </html>
 `;
 };
+
+
+export const accountApprovedTemplate = (userName, userEmail) => {
+  return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تم قبول حسابك | Progzila</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Segoe UI', Tahoma, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 15px;">
+<tr>
+<td align="center">
+
+<table width="620" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.06);">
+
+<!-- Header -->
+<tr>
+<td style="background:linear-gradient(135deg, #0f172a, #334155); text-align:center; padding:40px 20px;">
+<img
+src="https://res.cloudinary.com/dldmjxihf/image/upload/v1784406487/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_d2udqh.png"
+alt="Progzila Logo"
+width="180"
+style="display:block; margin:auto;"
+>
+</td>
+</tr>
+
+<!-- Content -->
+<tr>
+<td style="padding:50px 40px; text-align:center;">
+
+<!-- Icon/Badge -->
+<div style="display:inline-block; background-color:#dcfce7; color:#16a34a; width:64px; height:64px; line-height:64px; border-radius:50%; font-size:28px; margin-bottom:20px;">
+✅
+</div>
+
+<h1 style="margin:0 0 15px 0; color:#0f172a; font-size:26px; font-weight:700;">
+تهانينا! تم قبول حسابك 🎉
+</h1>
+
+<p style="color:#475569; line-height:1.8; font-size:16px; margin:0 0 30px 0;">
+مرحباً <strong style="color:#0f172a;">${userName || 'عزيزنا'}</strong>،
+<br>
+يسعدنا إبلاغك بأنه تمت مراجعة طلب انضمامك إلى <strong style="color:#0f172a;">Progzila</strong> والموافقة عليه بنجاح.
+حسابك الآن نشط وجاهز للاستخدام!
+</p>
+
+<!-- Details Box -->
+<div style="background-color:#f8fafc; border-radius:12px; padding:25px; margin:0 auto 35px auto; max-width:450px; border:1px solid #e2e8f0; text-align:right;">
+<p style="margin:0 0 10px 0; color:#64748b; font-size:14px;">
+<strong>البريد الإلكتروني:</strong> <span style="color:#0f172a;">${userEmail || '—'}</span>
+</p>
+<p style="margin:0 0 10px 0; color:#64748b; font-size:14px;">
+<strong>الحالة:</strong> <span style="color:#10b981; font-weight:600;">✓ نشط</span>
+</p>
+<p style="margin:0; color:#64748b; font-size:14px;">
+<strong>الصلاحية:</strong> <span style="color:#0f172a;">كاملة (مطور)</span>
+</p>
+</div>
+
+<!-- Steps -->
+<div style="background:linear-gradient(135deg, #eff6ff, #f0f9ff); border-radius:12px; padding:22px; margin:0 auto 30px auto; max-width:450px; border:1px solid #bfdbfe; text-align:right;">
+<p style="margin:0 0 12px 0; color:#1e40af; font-size:15px; font-weight:600;">
+🚀 خطواتك التالية:
+</p>
+<p style="margin:0 0 8px 0; color:#475569; font-size:14px; line-height:1.6;">
+1️⃣ سجّل الدخول إلى حسابك
+</p>
+<p style="margin:0 0 8px 0; color:#475569; font-size:14px; line-height:1.6;">
+2️⃣ أكمل بيانات ملفك الشخصي
+</p>
+<p style="margin:0; color:#475569; font-size:14px; line-height:1.6;">
+3️⃣ ابدأ بنشر مشاريعك الأولى
+</p>
+</div>
+
+<!-- Button -->
+<div style="margin-bottom:30px;">
+<a href="https://progzila.com/login" 
+   style="background:linear-gradient(135deg, #10b981, #059669); color:#ffffff; padding:15px 35px; border-radius:10px; font-size:16px; font-weight:600; text-decoration:none; display:inline-block; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+تسجيل الدخول الآن
+</a>
+</div>
+
+<p style="color:#94a3b8; font-size:13px; margin:0;">
+نحن سعداء بانضمامك إلى عائلة Progzila، ونتطلع لرؤية إبداعاتك.
+</p>
+
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="background-color:#f8fafc; border-top:1px solid #f1f5f9; text-align:center; padding:25px;">
+<p style="margin:0; color:#94a3b8; font-size:13px;">
+&copy; ${new Date().getFullYear()} Progzila. جميع الحقوق محفوظة.
+</p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`;
+};
+export const accountRejectedTemplate = (userName, userEmail, reason = '') => {
+  return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تحديث بشأن حسابك | Progzila</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Segoe UI', Tahoma, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 15px;">
+<tr>
+<td align="center">
+
+<table width="620" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.06);">
+
+<!-- Header -->
+<tr>
+<td style="background:linear-gradient(135deg, #0f172a, #334155); text-align:center; padding:40px 20px;">
+<img
+src="https://res.cloudinary.com/dldmjxihf/image/upload/v1784406487/5bb742e6-175c-4a58-b1b5-4a5ccc978c21_d2udqh.png"
+alt="Progzila Logo"
+width="180"
+style="display:block; margin:auto;"
+>
+</td>
+</tr>
+
+<!-- Content -->
+<tr>
+<td style="padding:50px 40px; text-align:center;">
+
+<!-- Icon/Badge -->
+<div style="display:inline-block; background-color:#fee2e2; color:#dc2626; width:64px; height:64px; line-height:64px; border-radius:50%; font-size:28px; margin-bottom:20px;">
+⚠️
+</div>
+
+<h1 style="margin:0 0 15px 0; color:#0f172a; font-size:26px; font-weight:700;">
+تحديث بشأن طلب انضمامك
+</h1>
+
+<p style="color:#475569; line-height:1.8; font-size:16px; margin:0 0 30px 0;">
+مرحباً <strong style="color:#0f172a;">${userName || 'عزيزنا'}</strong>،
+<br>
+نشكرك على اهتمامك بالانضمام إلى <strong style="color:#0f172a;">Progzila</strong>.
+بعد مراجعة طلبك، نأسف لإبلاغك بأنه لم يتم قبول الحساب في الوقت الحالي.
+</p>
+
+<!-- Details Box -->
+<div style="background-color:#f8fafc; border-radius:12px; padding:25px; margin:0 auto 25px auto; max-width:450px; border:1px solid #e2e8f0; text-align:right;">
+<p style="margin:0 0 10px 0; color:#64748b; font-size:14px;">
+<strong>البريد الإلكتروني:</strong> <span style="color:#0f172a;">${userEmail || '—'}</span>
+</p>
+<p style="margin:0 0 10px 0; color:#64748b; font-size:14px;">
+<strong>الحالة:</strong> <span style="color:#dc2626; font-weight:600;">✕ غير مقبول</span>
+</p>
+${
+  reason
+    ? `<p style="margin:0; color:#64748b; font-size:14px;">
+<strong>السبب:</strong> <span style="color:#0f172a;">${reason}</span>
+</p>`
+    : ''
+}
+</div>
+
+<!-- Reasons Box -->
+<div style="background:linear-gradient(135deg, #fff7ed, #fef2f2); border-radius:12px; padding:22px; margin:0 auto 30px auto; max-width:450px; border:1px solid #fed7aa; text-align:right;">
+<p style="margin:0 0 12px 0; color:#9a3412; font-size:15px; font-weight:600;">
+💡 أسباب محتملة للرفض:
+</p>
+<p style="margin:0 0 8px 0; color:#475569; font-size:14px; line-height:1.6;">
+• بيانات غير مكتملة أو غير واضحة في الملف الشخصي
+</p>
+<p style="margin:0 0 8px 0; color:#475569; font-size:14px; line-height:1.6;">
+• عدم استيفاء متطلبات المنصة للمطورين
+</p>
+<p style="margin:0; color:#475569; font-size:14px; line-height:1.6;">
+• وجود نشاط مخالف لشروط الاستخدام
+</p>
+</div>
+
+<!-- What's Next -->
+<div style="background:linear-gradient(135deg, #eff6ff, #f0f9ff); border-radius:12px; padding:22px; margin:0 auto 30px auto; max-width:450px; border:1px solid #bfdbfe; text-align:right;">
+<p style="margin:0 0 12px 0; color:#1e40af; font-size:15px; font-weight:600;">
+🚀 ماذا يمكنك فعله الآن؟
+</p>
+<p style="margin:0 0 8px 0; color:#475569; font-size:14px; line-height:1.6;">
+1️⃣ راجع بياناتك وتأكد من اكتمالها
+</p>
+<p style="margin:0 0 8px 0; color:#475569; font-size:14px; line-height:1.6;">
+2️⃣ تواصل معنا لمعرفة تفاصيل إضافية
+</p>
+<p style="margin:0; color:#475569; font-size:14px; line-height:1.6;">
+3️⃣ يمكنك إعادة التقديم لاحقاً بعد استكمال المتطلبات
+</p>
+</div>
+
+<!-- Buttons -->
+<div style="margin-bottom:30px;">
+<a href="https://progzila.com/register" 
+   style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; padding:15px 35px; border-radius:10px; font-size:16px; font-weight:600; text-decoration:none; display:inline-block; box-shadow:0 4px 12px rgba(2,132,199,0.3); margin:0 5px 10px 5px;">
+إعادة التقديم
+</a>
+<a href="https://wa.me/201019544851" 
+   style="background:#ffffff; color:#0284c7; padding:15px 35px; border-radius:10px; font-size:16px; font-weight:600; text-decoration:none; display:inline-block; border:2px solid #0284c7; margin:0 5px 10px 5px;">
+تواصل معنا
+</a>
+</div>
+
+<p style="color:#94a3b8; font-size:13px; margin:0;">
+إذا كنت تعتقد أن هناك خطأ في القرار، لا تتردد في التواصل مع فريق الدعم.
+</p>
+
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="background-color:#f8fafc; border-top:1px solid #f1f5f9; text-align:center; padding:25px;">
+<p style="margin:0; color:#94a3b8; font-size:13px;">
+&copy; ${new Date().getFullYear()} Progzila. جميع الحقوق محفوظة.
+</p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`;
+};

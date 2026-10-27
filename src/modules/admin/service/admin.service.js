@@ -28,11 +28,12 @@ import {
 } from "../../../utlis/multer/cloudflare.js";
 import { uploadToCloudinary } from "../../../utlis/multer/clouid.multern.js";
 import { sendemail } from "../../../utlis/email/sendemail.js";
-import { acceptedEmail, broadcastEmailTemplate } from "../../../utlis/temblete/vervication.email.js";
+import { acceptedEmail, accountApprovedTemplate, accountRejectedTemplate, broadcastEmailTemplate } from "../../../utlis/temblete/vervication.email.js";
 import UserActivity from "../../../DB/models/UserActivity.js";
 import { generatehash } from "../../../utlis/security/hash.security.js";
 import { logadminActivity } from "../../../utlis/activity/adminactivity.js";
 import Withdraw from "../../../DB/models/Withdraw.js";
+import mongoose from "mongoose";
 
 //جلب المستخدمين
 export const getusers = asyncHandelr(async (req, res, next) => {
@@ -4432,3 +4433,171 @@ export const createClientAndProject = asyncHandelr(
 
   }
 );
+
+
+
+
+// جلب طلبات المطورين المحتاجة موافقة
+
+export const getPendingVerifications = async (req, res) => {
+  try {
+    const { search = "", page = 1, limit = 10 } = req.query;
+
+    const currentPage = Math.max(1, Number(page) || 1);
+    const pageLimit = Math.min(100, Math.max(1, Number(limit) || 10));
+
+    const filter = {
+      status: "Under review",
+      deleted: { $ne: true },
+    };
+
+    if (search.trim()) {
+      const searchRegex = new RegExp(
+        search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i"
+      );
+      filter.$or = [
+        { username: searchRegex },
+        { email: searchRegex },
+      ];
+    }
+
+    const [requests, total] = await Promise.all([
+      Usermodel.find(filter)
+        .select("username email profileImage track userType createdAt github linkedin website title bio education certificates experience status")
+        .sort({ createdAt: -1 })
+        .skip((currentPage - 1) * pageLimit)
+        .limit(pageLimit)
+        .lean(),
+      Usermodel.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "تم جلب طلبات التحقق بنجاح",
+      data: requests,
+      pagination: {
+        total,
+        page: currentPage,
+        limit: pageLimit,
+        totalPages: Math.ceil(total / pageLimit),
+      },
+    });
+  } catch (error) {
+    console.error("getPendingVerifications error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء جلب طلبات التحقق",
+      error: error.message,
+    });
+  }
+};
+
+// قبول طلب التحقق
+export const approveVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log("🔍 Approve ID:", id);
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "معرف المستخدم غير صحيح",
+      });
+    }
+
+    const user = await Usermodel.findOneAndUpdate(
+      {
+        _id: id,
+        status: "Under review",
+        deleted: { $ne: true },
+      },
+      {
+        $set: { status: "approval" },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).select("username email status");
+
+    console.log("🔍 Updated user:", user);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "الطلب غير موجود أو تمت مراجعته بالفعل",
+      });
+    }
+await sendemail({
+    to: user.email,
+    subject: "approval",
+   html: accountApprovedTemplate(user.username , user.email)
+})
+    return res.status(200).json({
+      success: true,
+      message: "تم قبول طلب التحقق بنجاح",
+      data: user,
+    });
+  } catch (error) {
+    console.error("❌ approveVerification error:", error); // 👈 مهم
+    return res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء قبول الطلب",
+      error: error.message, // 👈 مهم
+    });
+  }
+};
+
+// رفض طلب التحقق
+export const rejectVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "معرف المستخدم غير صحيح",
+      });
+    }
+
+    const user = await Usermodel.findOneAndUpdate(
+      {
+        _id: id,
+      
+        status: "Under review",
+        deleted: { $ne: true },
+      },
+      {
+        $set: { status: "rejected" },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).select("username email status");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "الطلب غير موجود أو تمت مراجعته بالفعل",
+      });
+    }
+await sendemail({
+    to: user.email,
+    subject: "Rejected",
+   html: accountRejectedTemplate(user.username , user.email)
+})
+    return res.status(200).json({
+      success: true,
+      message: "تم رفض طلب التحقق بنجاح",
+      data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء رفض الطلب",
+    });
+  }
+};

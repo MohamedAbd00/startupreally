@@ -32,6 +32,7 @@ import { v4 as uuid } from "uuid";
 import { r2 } from "../../../utlis/multer/cloudflare.js";//استكمال البيانات
 import { logUserActivity } from "../../../utlis/activity/userActivity.service.js";
 import { createPaymentRequestService } from "../../payment/service/payment.service.js";
+import Subscription from "../../../DB/models/subscription.js";
 
 //اكمال ملف الشخصي للمبرمج
 export const updateprofiledev = asyncHandelr(async (req, res, next) => {

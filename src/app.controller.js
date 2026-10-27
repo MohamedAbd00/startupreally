@@ -11,12 +11,25 @@ import admincontroller from "./modules/admin/admin.controller.js";
 import paymentcontroller from "./modules/payment/payment.controller.js";
 import { socketConnection } from "./socket/service/socket.js"; // أو المسار الصح
 import { io } from "../index.js";
-
+import subscriptioncontroller from "./modules/subscription/subscription.controller.js";
 
 const bootstrap = (app) => {
 
-app.use(express.json({ limit: "500mb" }));
+app.use(
+  express.json({
+    limit: "500mb",
+    verify: (req, res, buf) => {
+      const pathname = req.originalUrl.split("?")[0];
+
+      if (pathname === "/subscription/webhook") {
+        req.rawBody = Buffer.from(buf);
+      }
+    },
+  })
+);
+
 app.use(express.urlencoded({ extended: true, limit: "500mb" }));
+
 
 app.use(cors({
 // origin: "https://progzila.com",
@@ -41,7 +54,7 @@ app.use("/chat", chatcontroller);
 app.use("/notification", notcontroller);
 app.use("/admin", admincontroller);
 app.use("/payment", paymentcontroller);
-
+app.use("/subscription", subscriptioncontroller);
 app.use(globalerror);
 };
 

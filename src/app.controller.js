@@ -38,7 +38,7 @@ app.use(cors({
    // "http://localhost:5173",
   //  "http://localhost:56902",
     "https://progzila.com",
-       "https://adminprogzial.vercel.app"
+       "https://adminprogzial.vercel.app",
   //  "http://localhost:5174"
   ],
 
